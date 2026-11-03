@@ -1,61 +1,80 @@
-# Cloudflare Admin Bridge — implementation notes
+# PocketPal ↔ Cloudflare managers — implementation notes
 
-Status: architecture discovery; no production credentials or Cloudflare API tokens are stored in this repository.
+Status: repository and live-worker discovery complete; no production Worker or secret was changed.
 
-## Repository findings
+## PocketPal repository findings
 
 - The app is React Native 0.87.1 / TypeScript and already has a Talent engine registry.
-- Built-in engines are registered in `src/services/talents/index.ts`; the Pal editor exposes every registered engine through `src/components/PalsSheets/TalentSection.tsx`.
-- `TalentEngine.execute(args, ctx?)` is the extension contract. Tool results are returned to the model as text, so the Cloudflare engine must return bounded, redacted summaries rather than credentials or raw secret-bearing API payloads.
-- `react-native-keychain` is already a dependency and is used by `src/store/SearchProviderStore.ts` for provider credentials. A separate service namespace should be used for the Cloudflare app credential; do not store Cloudflare account API tokens in the app.
-- The existing Talent UI registration is separate from engine registration. A Cloudflare tool may initially be exposed through the existing generic TalentSection without a bespoke UI.
-- The app is a bare React Native project; no Expo/EAS configuration exists.
+- Built-in engines are registered in `src/services/talents/index.ts`; the Pal editor exposes registered engines through `src/components/PalsSheets/TalentSection.tsx`.
+- `TalentEngine.execute(args, ctx?)` is the extension contract. Results are returned to the model as text, so the Cloudflare engine must return bounded, redacted summaries rather than secret-bearing payloads.
+- `react-native-keychain` is already installed and used by `src/store/SearchProviderStore.ts`. A separate service namespace can store a PocketPal-to-gateway credential; upstream Cloudflare API tokens must never be stored in the app.
+- Talent UI registration is separate from engine registration. The existing generic TalentSection can expose a new engine without a bespoke UI.
+- This is a bare React Native project; there is no Expo/EAS configuration.
 
-## Cloudflare accounts discovered through the connected account sessions
+## Live Cloudflare accounts and Workers
 
-- Manager 1 account: `443206d2fcb0e88cbe6ca6f5fa8c14e9`; current Worker `personal-ai-manager`.
-- Manager 2 account: `28e81766ca187c00138b277cf502705b`; current Workers include `goldstar-financial-v3`, `goldstar-trainer`, `trading-research-agent`, and `tv-ingest`.
-- The Worker settings show existing secret bindings, but secret values are not readable and must never be copied into source control or exposed to the mobile app.
-- These findings confirm that the two Cloudflare accounts are separately connected and independently addressable. They do not prove that the two deployed Workers already expose a common PocketPal API.
+Read-only inspection of both connected Cloudflare sessions confirmed:
 
-## Required trust boundary
+- Manager 1 account: `443206d2fcb0e88cbe6ca6f5fa8c14e9`; Worker: `personal-ai-manager`.
+- Manager 2 account: `28e81766ca187c00138b277cf502705b`; Workers include `goldstar-financial-v3`, `goldstar-trainer`, `trading-research-agent`, and `tv-ingest`.
 
-PocketPal must never contain either manager's Cloudflare API token. The intended topology is:
+### Important discovery: the L1→L2 bridge already exists
+
+The actual deployed `personal-ai-manager` source was read from Cloudflare (not inferred from GitHub). Its deployed version is **6.2.2**, with a source length of 180,837 characters. It already defines:
+
+- `FINANCIAL_WORKER_URL = https://goldstar-financial-v3.goldstar-nsl83.workers.dev`
+- `callFinancial(endpoint, env, method, body)`, which uses `GOLDSTAR_FINANCIAL_BRIDGE_KEY` (falling back to `GOLDSTAR_API_KEY`) and sends both `X-API-Key` and `X-Goldstar-Bridge-Key`.
+- Telegram manager commands for financial status, health, training, pending review, approval, strategy, and knowledge.
+- A diagnostic route `/__preview/financial-bridge`, restricted to the host `bridge-test-personal-ai-manager.goldstar-al-manager.workers.dev`.
+
+The deployed `goldstar-financial-v3` source in GitHub currently identifies itself as version 3.0.1. Its auth accepts the dedicated `X-Goldstar-Bridge-Key` against the Worker secret `L1_BRIDGE_KEY`, as well as the legacy `X-API-Key` against `API_KEY`. Its `/health` route is public; other routes require authentication.
+
+Therefore, do **not** create a second L1-to-L2 bridge or duplicate the existing financial bridge secret. The current bridge is already wired in both directions by secret binding names and code. This does not yet prove that its live diagnostic route succeeds end-to-end; that route has not been externally invoked successfully in this environment.
+
+### Missing capability for PocketPal
+
+The deployed L1 Worker does **not** currently expose a general PocketPal API. Its HTTP route list includes `/`, `/webhook`, `/setup`, `/github-test`, `/agent-report`, plus the restricted diagnostic/internal routes. Financial commands are Telegram command handlers, not callable PocketPal HTTP endpoints.
+
+The next backend change must therefore be a narrowly scoped, authenticated PocketPal API on L1 that reuses the existing `callFinancial` bridge for L2 operations. Do not point the app directly at the L2 Worker and do not expose the L1↔L2 secret to the phone.
+
+## Trust boundary and intended topology
 
 ```
-PocketPal Talent
-  -> HTTPS request with app credential held in iOS Keychain
-  -> authenticated gateway Worker in manager 1 account
-       -> fixed operation allowlist + role authorization
-       -> manager 1 Cloudflare API token (Worker secret)
-       -> manager 2 Cloudflare API token (Worker secret)
+PocketPal Cloudflare Talent
+  -> HTTPS + PocketPal-specific credential stored in iOS Keychain
+  -> authenticated, allowlisted API on personal-ai-manager (L1)
+       -> L1-owned read-only operations
+       -> existing callFinancial() bridge -> goldstar-financial-v3 (L2)
 ```
 
-The gateway must not be an arbitrary URL/method proxy. The model may choose only named operations from a strict schema; it must not supply arbitrary Cloudflare API paths, account IDs, headers, or methods. The gateway maps role names to fixed account IDs server-side. The model must not be allowed to promote itself from manager 2 to manager 1.
+The gateway must not be an arbitrary URL/method proxy. The model may choose only named operations from a strict schema; it must not supply arbitrary Cloudflare API paths, account IDs, headers, or methods. L1/L2 selection must be mapped server-side. The app must not receive either existing bridge secret.
 
-The two upstream Cloudflare API tokens must be separate, account-scoped, and least-privilege. Read-only operations should be implemented and tested first. Mutations (deploy, edit, delete, secrets, bindings, DNS, or access-policy changes) must be separately allowlisted, require an explicit user confirmation in the app, and produce an audit record. Destructive operations should remain disabled until individually reviewed.
+For direct Cloudflare resource administration (Workers, D1, KV, DNS, Access, secrets, deployments), neither inspected Worker source proves that an account-scoped Cloudflare API token is available. If those operations are required, create separate least-privilege tokens for each account and store them only as Worker secrets; never embed them in PocketPal or GitHub source. Begin with read-only inventory operations. Mutations require explicit user confirmation and audit records; destructive actions stay disabled until individually reviewed.
 
-A static app key is not equivalent to a Cloudflare API token, but it is still extractable from a distributed app if hardcoded. The app credential must be user-configurable/rotatable, stored only in Keychain, and accepted by the gateway only over HTTPS. Prefer short-lived credentials or Cloudflare Access-based identity if a viable mobile flow can be established.
+A static app key is extractable from a distributed binary if hardcoded. The PocketPal credential must be user-configurable/rotatable, stored only in Keychain, accepted only over HTTPS, and never echoed into model context, logs, or tool results. Prefer a short-lived or Cloudflare Access-based credential if a viable mobile authentication flow can be established.
 
 ## iOS build and installation constraints verified in this fork
 
-- The CI workflow builds an unsigned iOS Simulator app with code signing disabled. That artifact is not an installable iPhone IPA.
-- The release workflow does have a macOS/TestFlight lane, but it depends on Apple App Store Connect API credentials, Fastlane Match certificate/profile storage, GitHub secrets, and an Apple signing identity.
-- The checked-in Xcode project currently uses bundle identifier `ai.pocketpal`, upstream development team `MYXGXY23Y6`, and upstream Match profile names. Those cannot be assumed valid for this fork or a separately signed private app.
-- This fork must use a distinct bundle identifier and its own provisioning/signing material before an IPA can be installed or distributed. No signing secret should be added to the repository or printed in logs.
+- CI builds an unsigned iOS Simulator app with code signing disabled. That artifact is not an installable iPhone IPA.
+- The release workflow has a macOS/TestFlight lane, but it requires App Store Connect API credentials, Fastlane Match certificate/profile storage, GitHub secrets, and a valid Apple signing identity.
+- The checked-in Xcode project currently uses bundle identifier `ai.pocketpal`, upstream development team `MYXGXY23Y6`, and upstream Match profile names. These cannot be assumed valid for this fork or a separately signed private app.
+- The fork needs a distinct bundle identifier and its own provisioning/signing material before an IPA can be installed or distributed. No signing secret should be added to the repository or printed in logs.
 
 ## Implementation sequence
 
-1. Define and deploy a narrow gateway contract in the manager 1 account. Add two separate upstream API-token secrets there; do not change existing Workers or their secrets.
-2. Verify the gateway's authentication, role-to-account mapping, allowlist, response redaction, rate limits, and audit behavior independently of PocketPal.
-3. Add a dedicated Cloudflare Talent engine that calls only the gateway contract, validates every argument locally, aborts on cancellation, and emits safe summaries.
-4. Add a small connection-settings surface backed by Keychain for the gateway URL and rotatable app credential. Never expose upstream Cloudflare tokens in the UI, model prompt, tool result, logs, or app bundle.
-5. Add unit tests for role isolation, schema validation, malformed responses, timeouts, cancellation, secret redaction, and confirmation boundaries.
-6. Set up a separately signed iOS build using a new bundle ID and user-owned Apple signing credentials. Keep the upstream PocketPal app and the fork independently installable.
+1. Define a small versioned PocketPal API on L1. Initially expose only safe status/read operations, including a read-only L2 financial status call through the existing bridge.
+2. Add PocketPal-specific authentication, request-size limits, rate limiting, origin-independent CORS policy, strict operation schemas, redaction, and audit logging. Keep this credential separate from the L1↔L2 bridge secret.
+3. Verify the L1 API and its L2 calls independently before changing PocketPal.
+4. Add a dedicated Cloudflare Talent engine that calls only the L1 contract, validates arguments locally, aborts on cancellation, and emits safe summaries.
+5. Add connection settings backed by Keychain for the L1 endpoint and rotatable PocketPal credential.
+6. Add tests for role isolation, schema validation, malformed responses, timeouts, cancellation, secret redaction, and confirmation boundaries.
+7. Add direct Cloudflare resource administration only after per-account API-token scopes and exact allowed operations are defined.
+8. Set up a separately signed iOS build using a new bundle ID and user-owned Apple signing credentials.
 
 ## Explicit non-goals
 
 - No change to the original PocketPal repository or its `main` branch.
-- No Cloudflare account token in PocketPal, GitHub source, or GitHub Actions logs.
+- No change to either deployed Cloudflare Worker until the new source is backed up, reviewed, and the new route is tested independently.
+- No existing L1↔L2 bridge secret in PocketPal, GitHub source, or GitHub Actions logs.
 - No unrestricted Cloudflare API passthrough.
 - No automatic deployment, deletion, or permission changes initiated solely by model output.
