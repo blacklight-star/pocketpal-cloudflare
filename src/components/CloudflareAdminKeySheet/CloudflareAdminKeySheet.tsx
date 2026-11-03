@@ -37,10 +37,10 @@ export const CloudflareAdminKeySheet: React.FC<CloudflareAdminKeySheetProps> = (
     }
   }, [isVisible, cloudflareAdminStore.isKeyLoaded]);
 
-  const keyLengthValid = key.trim().length >= 32 && key.trim().length <= 256;
+  const keyFormatValid = /^[A-Za-z0-9._~-]{32,256}$/.test(key.trim());
 
   const handleSave = async () => {
-    if (!keyLengthValid) {
+    if (!keyFormatValid) {
       return;
     }
     setIsSaving(true);
@@ -91,9 +91,9 @@ export const CloudflareAdminKeySheet: React.FC<CloudflareAdminKeySheetProps> = (
           autoCorrect={false}
           spellCheck={false}
           secureTextEntry={secureTextEntry}
-          error={key.trim().length > 0 && !keyLengthValid}
+          error={key.trim().length > 0 && !keyFormatValid}
           helperText={
-            key.trim().length > 0 && !keyLengthValid
+            key.trim().length > 0 && !keyFormatValid
               ? strings.keyLengthError
               : undefined
           }
@@ -133,7 +133,7 @@ export const CloudflareAdminKeySheet: React.FC<CloudflareAdminKeySheetProps> = (
             mode="contained"
             onPress={handleSave}
             loading={isSaving}
-            disabled={isSaving || isClearing || !keyLengthValid}>
+            disabled={isSaving || isClearing || !keyFormatValid}>
             {strings.saveKeyButton}
           </Button>
         </View>
