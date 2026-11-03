@@ -1,6 +1,6 @@
 # PocketPal ↔ Cloudflare managers — implementation notes
 
-Status: repository and live-worker discovery complete; no production Worker or secret was changed.
+Status: repository and live-Worker discovery complete; no production Worker or secret was changed.
 
 ## PocketPal repository findings
 
@@ -18,36 +18,49 @@ Read-only inspection of both connected Cloudflare sessions confirmed:
 - Manager 1 account: `443206d2fcb0e88cbe6ca6f5fa8c14e9`; Worker: `personal-ai-manager`.
 - Manager 2 account: `28e81766ca187c00138b277cf502705b`; Workers include `goldstar-financial-v3`, `goldstar-trainer`, `trading-research-agent`, and `tv-ingest`.
 
-### Important discovery: the L1→L2 bridge already exists
+## Critical deployment-state distinction
 
-The actual deployed `personal-ai-manager` source was read from Cloudflare (not inferred from GitHub). Its deployed version is **6.2.2**, with a source length of 180,837 characters. It already defines:
+The Worker Scripts API returns the **latest uploaded source**, which is not necessarily the version receiving production traffic.
+
+- Latest uploaded L1 version: version **59**, source declares `CONFIG.VERSION = 6.2.2`; it is annotated `github-recovery-once`.
+- Version **58** is annotated `bridge-test` and described as a read-only bridge preview candidate.
+- The actual production deployment is version **56** at **100% traffic** (deployment ID `f9498b43-8d5c-45e5-8b6e-9501b9feb3cc`). Version 56's annotations say `Add secret: GOLDSTAR_FINANCIAL_BRIDGE_KEY`.
+- The current script-content endpoint returns version 59 even when a version-56 query parameter is supplied. The version-specific GET endpoint exposes metadata/bindings, not the source code.
+
+Therefore, the v6.2.2 source examined below is **not confirmed to be the production source**. Do not deploy, overwrite, or base a production patch on it until version 56's exact source has been recovered or otherwise verified. Cloudflare's existing version/deployment history remains intact.
+
+## L1→L2 bridge evidence
+
+The latest uploaded L1 source (v6.2.2; version 59) contains:
 
 - `FINANCIAL_WORKER_URL = https://goldstar-financial-v3.goldstar-nsl83.workers.dev`
 - `callFinancial(endpoint, env, method, body)`, which uses `GOLDSTAR_FINANCIAL_BRIDGE_KEY` (falling back to `GOLDSTAR_API_KEY`) and sends both `X-API-Key` and `X-Goldstar-Bridge-Key`.
-- Telegram manager commands for financial status, health, training, pending review, approval, strategy, and knowledge.
-- A diagnostic route `/__preview/financial-bridge`, restricted to the host `bridge-test-personal-ai-manager.goldstar-al-manager.workers.dev`.
+- Telegram commands for financial status, health, training, pending review, approval, strategy, and knowledge.
+- A diagnostic route `/__preview/financial-bridge`, restricted to host `bridge-test-personal-ai-manager.goldstar-al-manager.workers.dev`.
 
-The deployed `goldstar-financial-v3` source in GitHub currently identifies itself as version 3.0.1. Its auth accepts the dedicated `X-Goldstar-Bridge-Key` against the Worker secret `L1_BRIDGE_KEY`, as well as the legacy `X-API-Key` against `API_KEY`. Its `/health` route is public; other routes require authentication.
+The deployed L1 version 56 metadata confirms secret bindings named `GOLDSTAR_API_KEY` and `GOLDSTAR_FINANCIAL_BRIDGE_KEY`, but its exact source and runtime bridge success have not yet been confirmed.
 
-Therefore, do **not** create a second L1-to-L2 bridge or duplicate the existing financial bridge secret. The current bridge is already wired in both directions by secret binding names and code. This does not yet prove that its live diagnostic route succeeds end-to-end; that route has not been externally invoked successfully in this environment.
+The current `goldstar-financial-v3` source in GitHub identifies itself as version 3.0.1. It accepts the dedicated `X-Goldstar-Bridge-Key` against Worker secret `L1_BRIDGE_KEY`, as well as the legacy `X-API-Key` against `API_KEY`. Its `/health` route is public; other routes require authentication.
 
-### Missing capability for PocketPal
+Do not create a duplicate L1→L2 bridge or expose any existing bridge secret to the phone. The remaining work is to verify which bridge code is active in production and test it through a controlled preview before using it from PocketPal.
 
-The deployed L1 Worker does **not** currently expose a general PocketPal API. Its HTTP route list includes `/`, `/webhook`, `/setup`, `/github-test`, `/agent-report`, plus the restricted diagnostic/internal routes. Financial commands are Telegram command handlers, not callable PocketPal HTTP endpoints.
+## Missing capability for PocketPal
 
-The next backend change must therefore be a narrowly scoped, authenticated PocketPal API on L1 that reuses the existing `callFinancial` bridge for L2 operations. Do not point the app directly at the L2 Worker and do not expose the L1↔L2 secret to the phone.
+The latest uploaded L1 source does not define a general PocketPal API. Its HTTP route list includes `/`, `/webhook`, `/setup`, `/github-test`, `/agent-report`, and internal/preview routes. Financial commands in that source are Telegram command handlers, not a documented PocketPal HTTP contract.
+
+Because production is still on version 56, this route inventory must not be treated as the definitive production route list until version 56's code is recovered. A PocketPal API should be added as a separate, authenticated, versioned route only after the production source has been safely backed up.
 
 ## Trust boundary and intended topology
 
 ```
 PocketPal Cloudflare Talent
   -> HTTPS + PocketPal-specific credential stored in iOS Keychain
-  -> authenticated, allowlisted API on personal-ai-manager (L1)
+  -> authenticated, allowlisted API on manager 1 (L1)
        -> L1-owned read-only operations
-       -> existing callFinancial() bridge -> goldstar-financial-v3 (L2)
+       -> verified existing L1→L2 bridge -> goldstar-financial-v3 (L2)
 ```
 
-The gateway must not be an arbitrary URL/method proxy. The model may choose only named operations from a strict schema; it must not supply arbitrary Cloudflare API paths, account IDs, headers, or methods. L1/L2 selection must be mapped server-side. The app must not receive either existing bridge secret.
+The gateway must not be an arbitrary URL/method proxy. The model may choose only named operations from a strict schema; it must not supply arbitrary Cloudflare API paths, account IDs, headers, or methods. L1/L2 selection must be mapped server-side. The app must not receive either L1↔L2 bridge secret.
 
 For direct Cloudflare resource administration (Workers, D1, KV, DNS, Access, secrets, deployments), neither inspected Worker source proves that an account-scoped Cloudflare API token is available. If those operations are required, create separate least-privilege tokens for each account and store them only as Worker secrets; never embed them in PocketPal or GitHub source. Begin with read-only inventory operations. Mutations require explicit user confirmation and audit records; destructive actions stay disabled until individually reviewed.
 
@@ -62,19 +75,20 @@ A static app key is extractable from a distributed binary if hardcoded. The Pock
 
 ## Implementation sequence
 
-1. Define a small versioned PocketPal API on L1. Initially expose only safe status/read operations, including a read-only L2 financial status call through the existing bridge.
-2. Add PocketPal-specific authentication, request-size limits, rate limiting, origin-independent CORS policy, strict operation schemas, redaction, and audit logging. Keep this credential separate from the L1↔L2 bridge secret.
-3. Verify the L1 API and its L2 calls independently before changing PocketPal.
-4. Add a dedicated Cloudflare Talent engine that calls only the L1 contract, validates arguments locally, aborts on cancellation, and emits safe summaries.
-5. Add connection settings backed by Keychain for the L1 endpoint and rotatable PocketPal credential.
-6. Add tests for role isolation, schema validation, malformed responses, timeouts, cancellation, secret redaction, and confirmation boundaries.
-7. Add direct Cloudflare resource administration only after per-account API-token scopes and exact allowed operations are defined.
-8. Set up a separately signed iOS build using a new bundle ID and user-owned Apple signing credentials.
+1. Recover and back up the exact source of production L1 version 56. Do not substitute latest-uploaded version 59.
+2. Verify the existing L1→L2 bridge and its runtime health in a controlled preview.
+3. Define a small versioned PocketPal API on L1. Initially expose only safe status/read operations, including a read-only L2 financial status call through the verified bridge.
+4. Add PocketPal-specific authentication, request-size limits, rate limiting, strict operation schemas, redaction, and audit logging. Keep this credential separate from the L1↔L2 bridge secret.
+5. Verify the L1 API and its L2 calls independently before changing PocketPal.
+6. Add a dedicated Cloudflare Talent engine that calls only the L1 contract, validates arguments locally, aborts on cancellation, and emits safe summaries.
+7. Add connection settings backed by Keychain for the L1 endpoint and rotatable PocketPal credential.
+8. Add direct Cloudflare resource administration only after per-account API-token scopes and exact allowed operations are defined.
+9. Set up a separately signed iOS build using a new bundle ID and user-owned Apple signing credentials.
 
 ## Explicit non-goals
 
 - No change to the original PocketPal repository or its `main` branch.
-- No change to either deployed Cloudflare Worker until the new source is backed up, reviewed, and the new route is tested independently.
+- No change to either deployed Cloudflare Worker until the exact production source is backed up, reviewed, and the new route is tested independently.
 - No existing L1↔L2 bridge secret in PocketPal, GitHub source, or GitHub Actions logs.
 - No unrestricted Cloudflare API passthrough.
 - No automatic deployment, deletion, or permission changes initiated solely by model output.
