@@ -25,7 +25,7 @@ describe('CloudflareAdminClient', () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       status: 200,
-      text: async () => JSON.stringify({ok: true, data: {status: 'ok'}}),
+      text: async () => JSON.stringify({ok: true, manager: 'level1', operation: 'status', data: {status: 'ok'}}),
     });
 
     const client = new CloudflareAdminClient();
