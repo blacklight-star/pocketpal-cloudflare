@@ -164,7 +164,7 @@
       "keySheetTitle": "Cloudflare gateway credential",
       "keyDescription": "Paste the PocketPal gateway credential. Do not paste a Cloudflare API token here.",
       "keyInputPlaceholder": "Paste the PocketPal gateway credential",
-      "keyLengthError": "Use a gateway credential between 32 and 256 characters.",
+      "keyLengthError": "Use a 32–256 character URL-safe gateway credential (letters, numbers, . _ ~ -).",
       "saveKeyButton": "Save credential",
       "clearKeyButton": "Clear credential",
       "keyUpdateError": "Couldn't save the gateway credential."
