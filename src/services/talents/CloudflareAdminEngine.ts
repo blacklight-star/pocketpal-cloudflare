@@ -1,7 +1,6 @@
-import {
-  cloudflareAdminClient,
-  type CloudflareManagerLevel,
-  type CloudflareManagerOperation,
+import type {
+  CloudflareManagerLevel,
+  CloudflareManagerOperation,
 } from './CloudflareAdminClient';
 import {
   TalentEngine,
@@ -92,7 +91,7 @@ export class CloudflareAdminEngine implements TalentEngine {
   readonly name = 'cloudflare_admin';
   readonly recommendedContextTokens = 1400;
 
-  constructor(private client: GatewayClient = cloudflareAdminClient) {}
+  constructor(private client: GatewayClient) {}
 
   async execute(
     raw: Record<string, any>,
