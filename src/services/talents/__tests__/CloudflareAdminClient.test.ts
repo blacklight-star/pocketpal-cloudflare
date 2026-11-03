@@ -65,7 +65,7 @@ describe('CloudflareAdminClient', () => {
       text: async () => 'x'.repeat(30001),
     });
 
-    const client = new CloudflareAdminClient();
+    const client = new CloudflareAdminClient(credentialStore);
     await expect(client.execute('level1', 'status', {})).rejects.toThrow(
       'exceeded the allowed size',
     );
