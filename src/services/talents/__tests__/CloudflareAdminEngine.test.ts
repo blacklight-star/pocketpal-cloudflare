@@ -26,6 +26,20 @@ describe('CloudflareAdminEngine', () => {
     expect(result.summary).toContain('Cloudflare level1 — status');
   });
 
+  it('routes financial progress to level2', async () => {
+    await engine.execute({
+      manager: 'level2',
+      operation: 'financial.progress',
+    });
+
+    expect(execute).toHaveBeenCalledWith(
+      'level2',
+      'financial.progress',
+      {},
+      undefined,
+    );
+  });
+
   it('routes financial status to level2', async () => {
     await engine.execute({
       manager: 'level2',
@@ -71,31 +85,6 @@ describe('CloudflareAdminEngine', () => {
     expect(result.type).toBe('error');
   });
 
-  it('passes only the allowlisted knowledge search argument', async () => {
-    await engine.execute({
-      manager: 'level1',
-      operation: 'knowledge.search',
-      args: {query: 'workers', arbitraryPath: '/accounts'},
-    });
-
-    expect(execute).toHaveBeenCalledWith(
-      'level1',
-      'knowledge.search',
-      {query: 'workers'},
-      undefined,
-    );
-  });
-
-  it('validates the knowledge style enum', async () => {
-    const result = await engine.execute({
-      manager: 'level2',
-      operation: 'financial.knowledge.list',
-      args: {style: 'SECRET'},
-    });
-
-    expect(execute).not.toHaveBeenCalled();
-    expect(result.type).toBe('error');
-  });
 
   it('forwards cancellation signal to the gateway client', async () => {
     const controller = new AbortController();
@@ -131,5 +120,7 @@ describe('CloudflareAdminEngine', () => {
     expect(operations).not.toContain('deploy');
     expect(operations).not.toContain('delete');
     expect(operations).not.toContain('approve');
+    expect(operations).not.toContain('knowledge.search');
+    expect(operations).not.toContain('financial.knowledge.list');
   });
 });
