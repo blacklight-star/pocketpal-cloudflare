@@ -28,19 +28,24 @@ The gateway must reject unknown properties, unknown operations, invalid manager/
 
 ## Allowlist
 
+The L1 database contains a live GOLDSTAR organizational registry. The v1 app API should read that registry, not the older legacy `agents` and `tasks` tables. L1 data is sourced from `gs_org_units`, `gs_org_agents`, `gs_org_tasks`, `gs_org_access_policies`, and `gs_org_connections`.
+
 | Manager | Operation | Arguments | Expected behavior |
 |---|---|---|---|
-| level1 | status | none | Read-only manager status/counts from the existing L1 database |
-| level1 | agents.list | `limit` integer 1–10 (default 5) | List active agents; omit all stored API keys |
-| level1 | tasks.list | `limit` integer 1–10 (default 5) | List non-completed tasks |
-| level1 | knowledge.search | `query` string, 1–200 chars | Search L1 knowledge using bound SQL parameters |
-| level2 | health | none | Call L2 `/health` through the verified server-side bridge |
-| level2 | financial.status | none | Call L2 `/status` through the verified server-side bridge |
+| level1 | status | none | Return unit/agent/task counts and connection verification states from the GOLDSTAR registry |
+| level1 | agents.list | `limit` integer 1–10 (default 5) | List registry agents with name, role, level, unit, reporting line, and status; omit source payloads |
+| level1 | tasks.list | `limit` integer 1–10 (default 5) | List task metadata; omit `input_json`, `output_json`, and `error_text` |
+| level1 | access.policy.get | none | Return active role policies (allowed, denied, approval-required actions) and L1 policy version |
+| level1 | connections.list | none | Return integration status, protocol, auth mode label, and last verification time; never return credentials |
+| level2 | health | none | Call L2 `/health` through the server-side bridge |
+| level2 | financial.status | none | Call L2 `/status` through the server-side bridge |
+| level2 | financial.progress | none | Call L2 `/training/progress` through the server-side bridge |
 | level2 | financial.pending | `limit` integer 1–10 (default 5) | Read pending review items; no approval action |
 | level2 | financial.strategy.get | none | Read current strategy/status |
-| level2 | financial.knowledge.list | `style` enum `ICT`, `RTM`, `NDS` | Read the requested knowledge category |
+| level2 | financial.sources.list | none | Read the configured NDS source list |
 
-The app validates this allowlist locally as defense in depth. The Worker must independently enforce the same allowlist; client validation is not authorization.
+**Unverified/legacy knowledge is intentionally excluded.** The current L2 `/knowledge/:style` endpoint returns the complete KV list without filtering for `validationStatus === "approved"`. It must not be exposed to the app or model until the server filters approved records only. The current L2 `/training/progress` endpoint safely returns counts, including legacy and pending counts, without returning the rule bodies.
+
 
 ## Success response
 
