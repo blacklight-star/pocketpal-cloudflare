@@ -85,6 +85,18 @@ describe('CloudflareAdminClient', () => {
     });
   });
 
+  it('redacts L1-to-L2 bridge key fields', () => {
+    expect(
+      redactSensitiveFields({
+        GOLDSTAR_FINANCIAL_BRIDGE_KEY: 'private-value',
+        safeStatus: 'ok',
+      }),
+    ).toEqual({
+      GOLDSTAR_FINANCIAL_BRIDGE_KEY: '[REDACTED]',
+      safeStatus: 'ok',
+    });
+  });
+
   it('redacts credential-like strings', () => {
     expect(redactSensitiveFields('Authorization: Bearer abc.def')).toBe(
       'Authorization: Bearer [REDACTED]',
