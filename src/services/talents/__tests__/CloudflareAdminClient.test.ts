@@ -1,13 +1,9 @@
-jest.mock('../../../store/CloudflareAdminStore', () => ({
-  CLOUDFLARE_ADMIN_ENDPOINT:
-    'https://gateway.example.test/pocketpal/v1/execute',
-  cloudflareAdminStore: {
-    isKeyLoaded: true,
-    getGatewayKey: jest.fn(() => 'test-gateway-key'),
-  },
-}));
-
 import {CloudflareAdminClient, redactSensitiveFields} from '../CloudflareAdminClient';
+
+const credentialStore = {
+  isKeyLoaded: true,
+  getGatewayKey: jest.fn(() => 'test-gateway-key'),
+};
 
 describe('CloudflareAdminClient', () => {
   const originalFetch = global.fetch;
@@ -28,7 +24,7 @@ describe('CloudflareAdminClient', () => {
       text: async () => JSON.stringify({ok: true, manager: 'level1', operation: 'status', data: {status: 'ok'}}),
     });
 
-    const client = new CloudflareAdminClient();
+    const client = new CloudflareAdminClient(credentialStore);
     const result = await client.execute('level1', 'status', {});
 
     expect(global.fetch).toHaveBeenCalledWith(
