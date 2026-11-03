@@ -1,7 +1,5 @@
-import {
-  CLOUDFLARE_ADMIN_ENDPOINT,
-  cloudflareAdminStore,
-} from '../../store/CloudflareAdminStore';
+export const CLOUDFLARE_ADMIN_ENDPOINT =
+  'https://personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
 
 export type CloudflareManagerLevel = 'level1' | 'level2';
 
@@ -17,6 +15,11 @@ export type CloudflareManagerOperation =
   | 'financial.strategy.get'
   | 'financial.progress'
   | 'financial.sources.list';
+
+export interface CloudflareAdminCredentialStore {
+  readonly isKeyLoaded: boolean;
+  getGatewayKey(): string;
+}
 
 export interface CloudflareGatewayResponse {
   ok: boolean;
@@ -53,17 +56,19 @@ export function redactSensitiveFields(value: unknown): unknown {
 }
 
 export class CloudflareAdminClient {
+  constructor(private credentialStore: CloudflareAdminCredentialStore) {}
+
   async execute(
     manager: CloudflareManagerLevel,
     operation: CloudflareManagerOperation,
     args: Record<string, unknown>,
     signal?: AbortSignal,
   ): Promise<unknown> {
-    if (!cloudflareAdminStore.isKeyLoaded) {
+    if (!this.credentialStore.isKeyLoaded) {
       throw new Error('Cloudflare gateway credential is still loading.');
     }
 
-    const key = cloudflareAdminStore.getGatewayKey();
+    const key = this.credentialStore.getGatewayKey();
     if (!key) {
       throw new Error(
         'Cloudflare manager is not configured. Add the gateway credential in Settings.',
@@ -137,5 +142,3 @@ export class CloudflareAdminClient {
     return redactSensitiveFields(payload.data);
   }
 }
-
-export const cloudflareAdminClient = new CloudflareAdminClient();
