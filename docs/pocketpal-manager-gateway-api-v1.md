@@ -8,7 +8,7 @@ This is the contract expected by the app-side `cloudflare_admin` Talent. It is a
 - Path: `/pocketpal/v1/execute`
 - Current app endpoint: `https://personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute`
 - Authentication: `Authorization: Bearer <POCKETPAL_APP_KEY>`
-- `POCKETPAL_APP_KEY` is a dedicated app-to-gateway credential, separate from `GOLDSTAR_FINANCIAL_BRIDGE_KEY` and `GOLDSTAR_API_KEY`.
+- `POCKETPAL_APP_KEY` is a dedicated app-to-gateway credential, generated from a cryptographically secure random source and at least 32 URL-safe characters, separate from `GOLDSTAR_FINANCIAL_BRIDGE_KEY` and `GOLDSTAR_API_KEY`.
 - The app stores only the app credential in iOS Keychain. The L1↔L2 bridge credential stays in Cloudflare Worker secrets.
 - Reject missing, malformed, or invalid credentials with HTTP 401. Never echo credentials in errors or logs.
 
