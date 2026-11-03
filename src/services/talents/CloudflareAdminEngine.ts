@@ -24,6 +24,8 @@ const LEVEL1_OPERATIONS = new Set([
   'status',
   'agents.list',
   'tasks.list',
+  'access.policy.get',
+  'connections.list',
 ]);
 
 const LEVEL2_OPERATIONS = new Set([
@@ -31,8 +33,6 @@ const LEVEL2_OPERATIONS = new Set([
   'financial.status',
   'financial.pending',
   'financial.strategy.get',
-  'access.policy.get',
-  'connections.list',
   'financial.progress',
   'financial.sources.list',
 ]);
@@ -187,6 +187,8 @@ export class CloudflareAdminEngine implements TalentEngine {
                 'status',
                 'agents.list',
                 'tasks.list',
+                'access.policy.get',
+                'connections.list',
                 'health',
                 'financial.status',
                 'financial.pending',
