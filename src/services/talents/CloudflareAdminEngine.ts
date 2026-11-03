@@ -24,7 +24,6 @@ const LEVEL1_OPERATIONS = new Set([
   'status',
   'agents.list',
   'tasks.list',
-  'knowledge.search',
 ]);
 
 const LEVEL2_OPERATIONS = new Set([
@@ -32,7 +31,10 @@ const LEVEL2_OPERATIONS = new Set([
   'financial.status',
   'financial.pending',
   'financial.strategy.get',
-  'financial.knowledge.list',
+  'access.policy.get',
+  'connections.list',
+  'financial.progress',
+  'financial.sources.list',
 ]);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -62,24 +64,14 @@ function validateArguments(
       }
       return {limit};
     }
-    case 'knowledge.search': {
-      const query = typeof args.query === 'string' ? args.query.trim() : '';
-      if (!query || query.length > 200) {
-        return 'query is required and must be at most 200 characters.';
-      }
-      return {query};
-    }
-    case 'financial.knowledge.list': {
-      const style = args.style;
-      if (style !== 'ICT' && style !== 'RTM' && style !== 'NDS') {
-        return 'style must be ICT, RTM, or NDS.';
-      }
-      return {style};
-    }
     case 'status':
+    case 'access.policy.get':
+    case 'connections.list':
     case 'health':
     case 'financial.status':
+    case 'financial.progress':
     case 'financial.strategy.get':
+    case 'financial.sources.list':
       return {};
     default:
       return 'Unsupported Cloudflare manager operation.';
@@ -165,8 +157,9 @@ export class CloudflareAdminEngine implements TalentEngine {
     return (
       'cloudflare_admin provides read-only access to the configured Goldstar ' +
       'Cloudflare managers. Use level1 for central-manager status, agents, tasks, ' +
-      'and its knowledge search. Use level2 for financial-manager health, status, ' +
-      'pending rules, strategy, and ICT/RTM/NDS knowledge. This tool cannot deploy, ' +
+      'organization registry, access policy, and connection status. Use level2 for ' +
+      'financial-manager health, status, training progress, pending review, strategy, ' +
+      'and source configuration. Raw unverified/legacy knowledge is not exposed. This tool cannot deploy, ' +
       'edit, delete, approve, or change Cloudflare resources. Never claim that a ' +
       'change was made through this tool.'
     );
@@ -194,12 +187,12 @@ export class CloudflareAdminEngine implements TalentEngine {
                 'status',
                 'agents.list',
                 'tasks.list',
-                'knowledge.search',
                 'health',
                 'financial.status',
                 'financial.pending',
+                'financial.progress',
+                'financial.sources.list',
                 'financial.strategy.get',
-                'financial.knowledge.list',
               ],
               description:
                 'Allowed read-only operation. Availability depends on the selected manager level.',
@@ -208,9 +201,7 @@ export class CloudflareAdminEngine implements TalentEngine {
               type: 'object',
               additionalProperties: false,
               properties: {
-                query: {type: 'string', maxLength: 200},
                 limit: {type: 'integer', minimum: 1, maximum: 10},
-                style: {type: 'string', enum: ['ICT', 'RTM', 'NDS']},
               },
             },
           },
