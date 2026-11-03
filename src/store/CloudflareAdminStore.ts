@@ -50,7 +50,11 @@ class CloudflareAdminStore {
 
   async setGatewayKey(value: string): Promise<boolean> {
     const key = value.trim();
-    if (key.length < MIN_GATEWAY_KEY_LENGTH || key.length > MAX_GATEWAY_KEY_LENGTH) {
+    if (
+      key.length < MIN_GATEWAY_KEY_LENGTH ||
+      key.length > MAX_GATEWAY_KEY_LENGTH ||
+      !/^[A-Za-z0-9._~-]+$/.test(key)
+    ) {
       return false;
     }
     try {
