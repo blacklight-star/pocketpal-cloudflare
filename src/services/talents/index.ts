@@ -4,10 +4,12 @@ import {DatetimeEngine} from './DatetimeEngine';
 import {WebSearchEngine} from './WebSearchEngine';
 import {ReadUrlEngine} from './ReadUrlEngine';
 import {CloudflareAdminEngine} from './CloudflareAdminEngine';
+import {CloudflareAdminClient} from './CloudflareAdminClient';
 import {talentRegistry} from './TalentRegistry';
 import type {SearchAccess} from './searchAccess';
 import type {ToolDefinition, SystemPromptContext} from './types';
 import {searchProviderStore} from '../../store/SearchProviderStore';
+import {cloudflareAdminStore} from '../../store/CloudflareAdminStore';
 import {createSearchProvider, readWithDefaultReader} from '../search';
 
 export {TalentRegistry, talentRegistry} from './TalentRegistry';
@@ -47,6 +49,8 @@ function createSearchAccess(): SearchAccess {
   };
 }
 
+const cloudflareAdminClient = new CloudflareAdminClient(cloudflareAdminStore);
+
 let registered = false;
 
 /**
@@ -64,7 +68,7 @@ export function registerDefaultTalents(): void {
   const searchAccess = createSearchAccess();
   talentRegistry.register(new WebSearchEngine(searchAccess));
   talentRegistry.register(new ReadUrlEngine(searchAccess));
-  talentRegistry.register(new CloudflareAdminEngine());
+  talentRegistry.register(new CloudflareAdminEngine(cloudflareAdminClient));
   registered = true;
 }
 
