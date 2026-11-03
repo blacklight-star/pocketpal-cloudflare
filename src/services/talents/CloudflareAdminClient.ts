@@ -9,12 +9,12 @@ export type CloudflareManagerOperation =
   | 'status'
   | 'agents.list'
   | 'tasks.list'
-  | 'knowledge.search'
   | 'health'
   | 'financial.status'
   | 'financial.pending'
   | 'financial.strategy.get'
-  | 'financial.knowledge.list';
+  | 'financial.progress'
+  | 'financial.sources.list';
 
 export interface CloudflareGatewayResponse {
   ok: boolean;
