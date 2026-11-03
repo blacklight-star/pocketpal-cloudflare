@@ -6,6 +6,8 @@ import * as Keychain from 'react-native-keychain';
  * bridge credentials; neither Cloudflare account token is stored on-device.
  */
 const keychainService = 'cloudflare_admin_gateway_v1';
+const MIN_GATEWAY_KEY_LENGTH = 32;
+const MAX_GATEWAY_KEY_LENGTH = 256;
 
 class CloudflareAdminStore {
   private gatewayKey = '';
@@ -48,7 +50,7 @@ class CloudflareAdminStore {
 
   async setGatewayKey(value: string): Promise<boolean> {
     const key = value.trim();
-    if (!key) {
+    if (key.length < MIN_GATEWAY_KEY_LENGTH || key.length > MAX_GATEWAY_KEY_LENGTH) {
       return false;
     }
     try {
