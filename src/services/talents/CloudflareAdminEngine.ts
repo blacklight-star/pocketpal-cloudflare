@@ -49,6 +49,16 @@ function validateArguments(
     return 'The args argument must be an object.';
   }
 
+  const allowedKeys =
+    operation === 'agents.list' ||
+    operation === 'tasks.list' ||
+    operation === 'financial.pending'
+      ? ['limit']
+      : [];
+  if (Object.keys(args).some(key => !allowedKeys.includes(key))) {
+    return 'The operation contains unsupported arguments.';
+  }
+
   switch (operation) {
     case 'agents.list':
     case 'tasks.list':
@@ -159,9 +169,12 @@ export class CloudflareAdminEngine implements TalentEngine {
       'Cloudflare managers. Use level1 for central-manager status, agents, tasks, ' +
       'organization registry, access policy, and connection status. Use level2 for ' +
       'financial-manager health, status, training progress, pending review, strategy, ' +
-      'and source configuration. Raw unverified/legacy knowledge is not exposed. This tool cannot deploy, ' +
-      'edit, delete, approve, or change Cloudflare resources. Never claim that a ' +
-      'change was made through this tool.'
+      'and source configuration. Raw unverified/legacy knowledge is not exposed. ' +
+      'L1 cannot read secret values, execute live trades, approve its own high-risk ' +
+      'actions, or bypass domain controls. L2 is restricted to its own domain and ' +
+      'cannot read secrets, change organization policy, or execute unapproved trades. ' +
+      'The human owner is the final approval authority. This tool cannot deploy, edit, ' +
+      'delete, approve, or change Cloudflare resources. Never claim a change was made.'
     );
   }
 
