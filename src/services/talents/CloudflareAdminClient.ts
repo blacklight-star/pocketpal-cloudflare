@@ -85,6 +85,7 @@ export class CloudflareAdminClient {
     const timeout = setTimeout(() => controller.abort(), 20000);
 
     let response: Response;
+    let raw: string;
     try {
       response = await fetch(CLOUDFLARE_ADMIN_ENDPOINT, {
         method: 'POST',
@@ -96,6 +97,7 @@ export class CloudflareAdminClient {
         body: JSON.stringify({manager, operation, args}),
         signal: controller.signal,
       });
+      raw = await response.text();
     } catch (error) {
       if (signal?.aborted) {
         throw new Error('Cloudflare request was cancelled.');
@@ -109,7 +111,6 @@ export class CloudflareAdminClient {
       signal?.removeEventListener('abort', onAbort);
     }
 
-    const raw = await response.text();
     if (raw.length > MAX_RESPONSE_CHARS) {
       throw new Error('Cloudflare gateway response exceeded the allowed size.');
     }
