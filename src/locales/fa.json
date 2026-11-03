@@ -106,6 +106,18 @@
     "importButton": "وارد کردن",
     "importSuccess": "{{count}} جلسه چت با موفقیت وارد شد.",
     "importError": "وارد کردن جلسات چت ناموفق بود. لطفاً فرمت فایل را بررسی کنید.",
+    "cloudflareAdmin": {
+      "title": "درگاه مدیران کلودفلر",
+      "description": "اتصال به ساختار مدیران GOLDSTAR. اعتبارنامه درگاه فقط در Keychain آیفون ذخیره می‌شود و توکن‌های حساب‌های کلودفلر روی سرور باقی می‌مانند.",
+      "keyStatusSet": "اعتبارنامه درگاه تنظیم شده است.",
+      "keyStatusMissing": "اعتبارنامه درگاه تنظیم نشده است.",
+      "keySheetTitle": "اعتبارنامه درگاه کلودفلر",
+      "keyDescription": "اعتبارنامه اختصاصی PocketPal را وارد کنید. توکن API کلودفلر را در این قسمت وارد نکنید.",
+      "keyInputPlaceholder": "اعتبارنامه درگاه PocketPal را وارد کنید",
+      "saveKeyButton": "ذخیره اعتبارنامه",
+      "clearKeyButton": "پاک کردن اعتبارنامه",
+      "keyUpdateError": "ذخیره اعتبارنامه درگاه انجام نشد."
+    },
     "apiSettingsTitle": "تنظیمات API",
     "huggingFaceTokenLabel": "توکن Hugging Face",
     "tokenIsSetDescription": "توکن تنظیم شده است. برای دسترسی به مدل‌های محدودشده لازم است.",
