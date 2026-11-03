@@ -1,4 +1,8 @@
-import {CloudflareAdminClient, redactSensitiveFields} from '../CloudflareAdminClient';
+import {
+  CLOUDFLARE_ADMIN_ENDPOINT,
+  CloudflareAdminClient,
+  redactSensitiveFields,
+} from '../CloudflareAdminClient';
 
 const credentialStore = {
   isKeyLoaded: true,
@@ -28,7 +32,7 @@ describe('CloudflareAdminClient', () => {
     const result = await client.execute('level1', 'status', {});
 
     expect(global.fetch).toHaveBeenCalledWith(
-      'https://gateway.example.test/pocketpal/v1/execute',
+      CLOUDFLARE_ADMIN_ENDPOINT,
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
@@ -48,7 +52,7 @@ describe('CloudflareAdminClient', () => {
       text: async () => 'not-json',
     });
 
-    const client = new CloudflareAdminClient();
+    const client = new CloudflareAdminClient(credentialStore);
     await expect(client.execute('level1', 'status', {})).rejects.toThrow(
       'invalid JSON',
     );
