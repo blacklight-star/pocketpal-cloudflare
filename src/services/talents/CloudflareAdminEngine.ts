@@ -96,6 +96,10 @@ export class CloudflareAdminEngine implements TalentEngine {
     raw: Record<string, any>,
     ctx?: TalentExecuteContext,
   ): Promise<TalentResult> {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return this.error('Tool arguments must be an object.');
+    }
+
     const manager = raw.manager;
     const operation = raw.operation;
 
