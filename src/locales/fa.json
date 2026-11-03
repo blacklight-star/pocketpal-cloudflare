@@ -117,6 +117,7 @@
       "keySheetTitle": "اعتبارنامه درگاه کلودفلر",
       "keyDescription": "اعتبارنامه اختصاصی PocketPal را وارد کنید. توکن API کلودفلر را در این قسمت وارد نکنید.",
       "keyInputPlaceholder": "اعتبارنامه درگاه PocketPal را وارد کنید",
+      "keyLengthError": "طول اعتبارنامه باید بین ۳۲ تا ۲۵۶ نویسه باشد.",
       "saveKeyButton": "ذخیره اعتبارنامه",
       "clearKeyButton": "پاک کردن اعتبارنامه",
       "keyUpdateError": "ذخیره اعتبارنامه درگاه انجام نشد."
