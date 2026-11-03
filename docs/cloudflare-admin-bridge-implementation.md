@@ -18,6 +18,28 @@ Read-only inspection of both connected Cloudflare sessions confirmed:
 - Manager 1 account: `443206d2fcb0e88cbe6ca6f5fa8c14e9`; Worker: `personal-ai-manager`.
 - Manager 2 account: `28e81766ca187c00138b277cf502705b`; Workers include `goldstar-financial-v3`, `goldstar-trainer`, `trading-research-agent`, and `tv-ingest`.
 
+## GOLDSTAR organization registry and access policy verified in L1 D1
+
+The live L1 D1 database is `2f9551be-0c6c-4750-9279-ba6035d60d26`. Its schema includes the active organization/governance tables `gs_org_units`, `gs_org_agents`, `gs_org_tasks`, `gs_org_access_policies`, `gs_org_connections`, `gs_l1_policy`, `gs_l1_audit`, and `gs_l1_decisions`. The app's L1 read operations must use these tables, not the older generic `agents` and `tasks` tables.
+
+Current registry facts:
+- `GOLDSTAR_CORE` is the level-1 central unit; `GOLDSTAR_FINANCIAL` is the level-2 financial domain.
+- The financial L2 agent is `L2`, status `defined`; the L1 manager agent is `L1`, status `defined`.
+- Construction, manufacturing, and trade L2 managers are currently `planned`, not operational.
+- The active `CORE_L1` policy allows task assignment/monitoring, reading domain reports, managing the organization registry, proposing policy changes, and halting unsafe operations. It denies reading secret values, executing live trades, approving its own high-risk actions, and bypassing domain controls.
+- The active `DOMAIN_L2` policy limits L2 to its own domain. It denies access to other domains' private data, secret values, organization-policy changes, and unapproved trades.
+- `OWNER_L0` is the human final authority for high-risk approvals.
+
+The current `goldstar.core` policy explicitly sets `live_trading_enabled=false`, `initial_mode=demo`, `require_l1_approval=true`, `approval_payload_hash_required=true`, `approval_expiry_required=true`, `fail_closed=true`, `paid_services_allowed=false`, `automatic_billing_allowed=false`, `per_manager_separate_account=false`, and `logical_isolation_required=true`. PocketPal must preserve these controls; it must not invent extra authority for L1 or L2.
+
+The live `CORE_FINANCIAL_BRIDGE` registry row is `helper_defined_runtime_unverified` with `last_verified_at=null`. Therefore, the existence of `callFinancial()` in the latest uploaded L1 source and bridge-key bindings does not establish a working runtime connection.
+
+## L2 read/write boundary verified in source
+
+The current L2 source in `blacklight-star/goldstar-financial/src/worker.js` is version 3.0.1. Its read endpoints include `/health`, `/status`, `/training/progress`, `/training/pending`, `/training/sources`, `/knowledge/:style`, and `/strategy`. Its write endpoints include `/training/approve`, `/strategy/synthesize`, and `/training/batch`. `/analyze` is explicitly disabled until a verified market-data feed is connected and validated.
+
+Do not expose `/knowledge/:style` to PocketPal: it returns the entire KV list and does not filter `validationStatus === "approved"`. Use `/status` and `/training/progress` for counts only; `/training/pending` is a separately labelled review queue. No approve, batch-ingest, strategy-synthesis, or analyze operation is included in v1.
+
 ## Critical deployment-state distinction
 
 The Worker Scripts API returns the **latest uploaded source**, which is not necessarily the version receiving production traffic.
