@@ -72,16 +72,35 @@ export class CloudflareAdminClient {
       throw new Error('Cloudflare request was cancelled.');
     }
 
-    const response = await fetch(CLOUDFLARE_ADMIN_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({manager, operation, args}),
-      signal,
-    });
+    const controller = new AbortController();
+    const onAbort = () => controller.abort();
+    signal?.addEventListener('abort', onAbort, {once: true});
+    const timeout = setTimeout(() => controller.abort(), 20000);
+
+    let response: Response;
+    try {
+      response = await fetch(CLOUDFLARE_ADMIN_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify({manager, operation, args}),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (signal?.aborted) {
+        throw new Error('Cloudflare request was cancelled.');
+      }
+      if (controller.signal.aborted) {
+        throw new Error('Cloudflare gateway request timed out.');
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+      signal?.removeEventListener('abort', onAbort);
+    }
 
     const raw = await response.text();
     if (raw.length > MAX_RESPONSE_CHARS) {
@@ -98,9 +117,10 @@ export class CloudflareAdminClient {
     }
 
     if (!response.ok || payload.ok !== true) {
+      const safeError = redactSensitiveFields(payload.error);
       const message =
-        typeof payload.error === 'string'
-          ? payload.error.slice(0, 500)
+        typeof safeError === 'string'
+          ? safeError.slice(0, 500)
           : `Cloudflare gateway request failed (HTTP ${response.status}).`;
       throw new Error(message);
     }
