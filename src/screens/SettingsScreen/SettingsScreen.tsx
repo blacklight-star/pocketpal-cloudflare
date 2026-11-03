@@ -44,6 +44,7 @@ import {
   HFTokenSheet,
   LanguageSelector,
   SearchProviderKeySheet,
+  CloudflareAdminKeySheet,
   InputSlider,
 } from '../../components';
 import {AuthSheet} from '../../components/PalsHub';
@@ -63,6 +64,7 @@ import {
   ttsStore,
   asrStore,
   searchProviderStore,
+  cloudflareAdminStore,
   purchaseStore,
   voiceModeStore,
 } from '../../store';
@@ -123,6 +125,8 @@ export const SettingsScreen: React.FC = observer(() => {
   const [showHfTokenDialog, setShowHfTokenDialog] = useState(false);
   const [showAuthSheet, setShowAuthSheet] = useState(false);
   const [showSearchKeySheet, setShowSearchKeySheet] = useState(false);
+  const [showCloudflareAdminKeySheet, setShowCloudflareAdminKeySheet] =
+    useState(false);
   const [gpuSupported, setGpuSupported] = useState(false);
   const [deviceOptions, setDeviceOptions] = useState<DeviceOption[]>([]);
   const [currentBackend, setCurrentBackend] = useState<
@@ -1589,6 +1593,36 @@ export const SettingsScreen: React.FC = observer(() => {
             </Card.Content>
           </Card>
 
+          {/* Goldstar Cloudflare manager gateway */}
+          <Card elevation={0} style={styles.card}>
+            <Card.Title title={l10n.settings.cloudflareAdmin.title} />
+            <Card.Content>
+              <View style={styles.switchContainer}>
+                <View style={styles.textContainer}>
+                  <Text variant="labelSmall" style={styles.textDescription}>
+                    {!cloudflareAdminStore.isKeyLoaded
+                      ? l10n.settings.cloudflareAdmin.keyLoading
+                      : cloudflareAdminStore.hasGatewayKey
+                        ? l10n.settings.cloudflareAdmin.keyStatusSet
+                        : l10n.settings.cloudflareAdmin.keyStatusMissing}
+                  </Text>
+                  <Text variant="labelSmall" style={styles.textDescription}>
+                    {l10n.settings.cloudflareAdmin.description}
+                  </Text>
+                </View>
+                <Button
+                  mode="outlined"
+                  disabled={!cloudflareAdminStore.isKeyLoaded}
+                  onPress={() => setShowCloudflareAdminKeySheet(true)}
+                  style={styles.menuButton}>
+                  {cloudflareAdminStore.hasGatewayKey
+                    ? l10n.settings.cloudflareAdmin.updateKeyButton
+                    : l10n.settings.cloudflareAdmin.setKeyButton}
+                </Button>
+              </View>
+            </Card.Content>
+          </Card>
+
           {/* Cache & Storage Settings - iOS only (for Shortcuts) */}
           {Platform.OS === 'ios' && (
             <Card elevation={0} style={styles.card}>
@@ -1742,6 +1776,10 @@ export const SettingsScreen: React.FC = observer(() => {
         providerId={activeSearchProviderId}
         providerLabel={activeSearchProvider?.label ?? activeSearchProviderId}
         onDismiss={() => setShowSearchKeySheet(false)}
+      />
+      <CloudflareAdminKeySheet
+        isVisible={showCloudflareAdminKeySheet}
+        onDismiss={() => setShowCloudflareAdminKeySheet(false)}
       />
       {showAuthSheet && (
         <AuthSheet
