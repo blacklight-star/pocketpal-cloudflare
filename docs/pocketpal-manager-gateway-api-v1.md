@@ -1,6 +1,6 @@
 # PocketPal manager gateway API contract (v1)
 
-This is the contract expected by the app-side `cloudflare_admin` Talent. It is a proposed, read-only API; the live L1 Worker does not yet expose this route. Do not treat the endpoint as live until a separately tested Worker version implements it.
+This is the contract expected by the app-side `cloudflare_admin` Talent. It is a proposed, read-only API. The route has not been found in the latest uploaded L1 source and has not been verified on the active production deployment; treat it as unavailable until a separately tested Worker version implements it.
 
 ## Endpoint and authentication
 
