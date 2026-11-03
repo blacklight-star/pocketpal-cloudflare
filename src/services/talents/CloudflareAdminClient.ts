@@ -9,6 +9,8 @@ export type CloudflareManagerOperation =
   | 'status'
   | 'agents.list'
   | 'tasks.list'
+  | 'access.policy.get'
+  | 'connections.list'
   | 'health'
   | 'financial.status'
   | 'financial.pending'
@@ -114,6 +116,13 @@ export class CloudflareAdminClient {
       throw new Error(
         `Cloudflare gateway returned invalid JSON (HTTP ${response.status}).`,
       );
+    }
+
+    if (
+      payload.ok === true &&
+      (payload.manager !== manager || payload.operation !== operation)
+    ) {
+      throw new Error('Cloudflare gateway response context mismatch.');
     }
 
     if (!response.ok || payload.ok !== true) {
