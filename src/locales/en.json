@@ -153,6 +153,18 @@
       "consentGivenDescription": "Queries and page reads may leave your device as described above.",
       "consentRevoke": "Revoke"
     },
+    "cloudflareAdmin": {
+      "title": "Cloudflare Manager Gateway",
+      "description": "Connect to the Goldstar manager hierarchy. The gateway credential is stored in iOS Keychain; Cloudflare account credentials remain on the server.",
+      "keyStatusSet": "Gateway credential is configured.",
+      "keyStatusMissing": "Gateway credential is not configured.",
+      "keySheetTitle": "Cloudflare gateway credential",
+      "keyDescription": "Paste the PocketPal gateway credential. Do not paste a Cloudflare API token here.",
+      "keyInputPlaceholder": "Paste the PocketPal gateway credential",
+      "saveKeyButton": "Save credential",
+      "clearKeyButton": "Clear credential",
+      "keyUpdateError": "Couldn't save the gateway credential."
+    },
     "apiSettingsTitle": "API Settings",
     "huggingFaceTokenLabel": "Hugging Face Token",
     "tokenIsSetDescription": "Token is set. Required for accessing gated models.",
