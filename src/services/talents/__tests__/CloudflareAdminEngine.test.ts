@@ -74,6 +74,17 @@ describe('CloudflareAdminEngine', () => {
     expect(result.type).toBe('error');
   });
 
+  it('rejects unsupported arguments for read-only status operations', async () => {
+    const result = await engine.execute({
+      manager: 'level1',
+      operation: 'status',
+      args: {accountId: 'attacker-selected-account'},
+    });
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(result.type).toBe('error');
+  });
+
   it('validates and clamps no limits implicitly', async () => {
     const result = await engine.execute({
       manager: 'level2',
