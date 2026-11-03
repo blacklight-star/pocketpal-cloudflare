@@ -32,7 +32,7 @@ Current registry facts:
 
 The current `goldstar.core` policy explicitly sets `live_trading_enabled=false`, `initial_mode=demo`, `require_l1_approval=true`, `approval_payload_hash_required=true`, `approval_expiry_required=true`, `fail_closed=true`, `paid_services_allowed=false`, `automatic_billing_allowed=false`, `per_manager_separate_account=false`, and `logical_isolation_required=true`. PocketPal must preserve these controls; it must not invent extra authority for L1 or L2.
 
-The live `CORE_FINANCIAL_BRIDGE` registry row is `helper_defined_runtime_unverified` with `last_verified_at=null`. Therefore, the existence of `callFinancial()` in the latest uploaded L1 source and bridge-key bindings does not establish a working runtime connection.
+The live `CORE_FINANCIAL_BRIDGE` registry row remains `helper_defined_runtime_unverified`; its notes explicitly say the runtime bridge preview test is pending. A recent `last_verified_at` timestamp alone does not override that status. The separate L1 task `FIN-V1-001` (read-only bridge test) remains blocked, and `ORG-V1-003` (L1 registry/task-dispatch API) also remains blocked. Therefore, neither the L1→L2 bridge nor a PocketPal API is currently verified end-to-end.
 
 ## L2 read/write boundary verified in source
 
@@ -44,10 +44,11 @@ Do not expose `/knowledge/:style` to PocketPal: it returns the entire KV list an
 
 The Worker Scripts API returns the **latest uploaded source**, which is not necessarily the version receiving production traffic.
 
-- Latest uploaded L1 version: version **59**, source declares `CONFIG.VERSION = 6.2.2`; it is annotated `github-recovery-once`.
-- Version **58** is annotated `bridge-test` and described as a read-only bridge preview candidate.
-- The actual production deployment is version **56** at **100% traffic** (deployment ID `f9498b43-8d5c-45e5-8b6e-9501b9feb3cc`). Version 56's annotations say `Add secret: GOLDSTAR_FINANCIAL_BRIDGE_KEY`.
-- The current script-content endpoint returns version 59 even when a version-56 query parameter is supplied. The version-specific GET endpoint exposes metadata/bindings, not the source code.
+- Latest uploaded L1 version: version **60**, source declares `CONFIG.VERSION = 6.2.2`; it is annotated `bridge-test` and described as a preview candidate for owner-bound, expiring approval payloads, a five-minute reviewed-rule snapshot, payload/rule-set hashes, and a one-time request ID. It is explicitly **not deployed**.
+- Version **59** is annotated `github-recovery-once`; version **58** is an earlier `bridge-test` candidate; version **57** is the organization-registry candidate.
+- The actual L1 production deployment remains version **56** at **100% traffic**. Version 56's annotations say `Add secret: GOLDSTAR_FINANCIAL_BRIDGE_KEY`.
+- L2 production remains version **19** at **100% traffic**; L2 version **20** is a preview candidate with a D1 binding and matching approval-envelope logic, not deployed.
+- The current script-content endpoint returns the latest uploaded version 60, even when a version-56 query parameter is supplied. The version-specific GET endpoint exposes metadata/bindings, not the source code.
 
 Therefore, the v6.2.2 source examined below is **not confirmed to be the production source**. Do not deploy, overwrite, or base a production patch on it until version 56's exact source has been recovered or otherwise verified. Cloudflare's existing version/deployment history remains intact.
 
@@ -68,7 +69,7 @@ Do not create a duplicate L1→L2 bridge or expose any existing bridge secret to
 
 ## Missing capability for PocketPal
 
-The latest uploaded L1 source does not define a general PocketPal API. Its HTTP route list includes `/`, `/webhook`, `/setup`, `/github-test`, `/agent-report`, and internal/preview routes. Financial commands in that source are Telegram command handlers, not a documented PocketPal HTTP contract.
+The latest uploaded L1 v6.2.2 source (version 60) does not define a general PocketPal API. Its HTTP route list includes `/`, `/webhook`, `/setup`, `/github-test`, `/agent-report`, and internal/preview routes. The `/__preview/financial-bridge` route is a diagnostic only; it reports key presence and bounded L2 status/pending counts, not a general manager API. Financial commands in that source are Telegram command handlers, not a documented PocketPal HTTP contract.
 
 Because production is still on version 56, this route inventory must not be treated as the definitive production route list until version 56's code is recovered. A PocketPal API should be added as a separate, authenticated, versioned route only after the production source has been safely backed up.
 
@@ -97,9 +98,9 @@ A static app key is extractable from a distributed binary if hardcoded. The Pock
 
 ## Implementation sequence
 
-1. Recover and back up the exact source of production L1 version 56. Do not substitute latest-uploaded version 59.
-2. Verify the existing L1→L2 bridge and its runtime health in a controlled preview.
-3. Define a small versioned PocketPal API on L1. Initially expose only safe status/read operations, including a read-only L2 financial status call through the verified bridge.
+1. Recover and back up the exact source of production L1 version 56. Do not substitute latest-uploaded preview version 60.
+2. Complete the pending read-only L1→L2 bridge runtime test in the controlled preview; preserve the current fail-closed production deployments.
+3. Complete/coordinate the blocked L1 registry/task API work (ORG-V1-003) and define a small versioned PocketPal API on L1. Initially expose only safe status/read operations, including a read-only L2 financial status call through the verified bridge.
 4. Add PocketPal-specific authentication, request-size limits, rate limiting, strict operation schemas, redaction, and audit logging. Keep this credential separate from the L1↔L2 bridge secret.
 5. Verify the L1 API and its L2 calls independently before changing PocketPal.
 6. Add a dedicated Cloudflare Talent engine that calls only the L1 contract, validates arguments locally, aborts on cancellation, and emits safe summaries.
