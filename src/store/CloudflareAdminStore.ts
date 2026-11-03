@@ -36,7 +36,7 @@ class CloudflareAdminStore {
         service: keychainService,
       });
       runInAction(() => {
-        this.gatewayKey = credentials?.password ?? '';
+        this.gatewayKey = credentials ? credentials.password : '';
         this.keyLoaded = true;
       });
     } catch (error) {
