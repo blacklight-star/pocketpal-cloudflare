@@ -919,6 +919,7 @@
         "datetime": "Date & time",
         "web_search": "Web search",
         "read_url": "Read web page"
+        "cloudflare_admin": "Cloudflare manager",
       },
       "talentDescriptions": {
         "render_html": "Render HTML documents inline in chat",
@@ -926,6 +927,7 @@
         "datetime": "Get the current date and time",
         "web_search": "Search the internet for current information (requires API key in Settings)",
         "read_url": "Read the full content of a web page (requires API key in Settings)"
+        "cloudflare_admin": "Read-only access to the Goldstar level-1 and level-2 managers"
       },
       "greeting": {
         "sectionLabel": "Greeting",
