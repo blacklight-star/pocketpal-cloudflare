@@ -37,8 +37,10 @@ export const CloudflareAdminKeySheet: React.FC<CloudflareAdminKeySheetProps> = (
     }
   }, [isVisible, cloudflareAdminStore.isKeyLoaded]);
 
+  const keyLengthValid = key.trim().length >= 32 && key.trim().length <= 256;
+
   const handleSave = async () => {
-    if (!key.trim()) {
+    if (!keyLengthValid) {
       return;
     }
     setIsSaving(true);
@@ -89,6 +91,12 @@ export const CloudflareAdminKeySheet: React.FC<CloudflareAdminKeySheetProps> = (
           autoCorrect={false}
           spellCheck={false}
           secureTextEntry={secureTextEntry}
+          error={key.trim().length > 0 && !keyLengthValid}
+          helperText={
+            key.trim().length > 0 && !keyLengthValid
+              ? strings.keyLengthError
+              : undefined
+          }
           right={
             <PaperTextInput.Icon
               testID="cloudflare-admin-key-visibility"
@@ -125,7 +133,7 @@ export const CloudflareAdminKeySheet: React.FC<CloudflareAdminKeySheetProps> = (
             mode="contained"
             onPress={handleSave}
             loading={isSaving}
-            disabled={isSaving || isClearing || !key.trim()}>
+            disabled={isSaving || isClearing || !keyLengthValid}>
             {strings.saveKeyButton}
           </Button>
         </View>
