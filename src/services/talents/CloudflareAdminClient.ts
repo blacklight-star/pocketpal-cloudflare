@@ -1,5 +1,18 @@
-export const CLOUDFLARE_ADMIN_ENDPOINT =
+import {CLOUDFLARE_ADMIN_ENDPOINT as configuredEndpoint} from '@env';
+
+const PRODUCTION_GATEWAY_ENDPOINT =
   'https://personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
+const PREVIEW_GATEWAY_ENDPOINT =
+  'https://pocketpal-test-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
+const configuredGatewayEndpoint = (configuredEndpoint || '').trim();
+
+// Only the two reviewed L1 origins are permitted. An invalid explicit override
+// disables the client instead of silently sending preview traffic to production.
+export const CLOUDFLARE_ADMIN_ENDPOINT = configuredGatewayEndpoint
+  ? [PRODUCTION_GATEWAY_ENDPOINT, PREVIEW_GATEWAY_ENDPOINT].includes(configuredGatewayEndpoint)
+    ? configuredGatewayEndpoint
+    : ''
+  : PRODUCTION_GATEWAY_ENDPOINT;
 
 export type CloudflareManagerLevel = 'level1' | 'level2';
 
@@ -64,7 +77,7 @@ export class CloudflareAdminClient {
     args: Record<string, unknown>,
     signal?: AbortSignal,
   ): Promise<unknown> {
-    if (!this.credentialStore.isKeyLoaded) {
+    if (!CLOUDFLARE_ADMIN_ENDPOINT) {\n      throw new Error('Cloudflare gateway endpoint is invalid or not allowlisted.');\n    }\n\n    if (!this.credentialStore.isKeyLoaded) {
       throw new Error('Cloudflare gateway credential is still loading.');
     }
 
