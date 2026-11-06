@@ -10,6 +10,11 @@ on:
       - main
       - hardening/pocketpal-gateway-v1
 
+# Keep one current run per event type and branch; stale queued builds are superseded.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
