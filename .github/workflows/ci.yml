@@ -1,5 +1,4 @@
 name: CI Pipeline
-# Diagnostic commit 2: verify updated GitHub Actions allowlist.
 
 on:
   workflow_dispatch:
@@ -80,6 +79,7 @@ jobs:
 
       # Step 3: Install dependencies and iOS Pods
       - name: Install dependencies
+        id: install-dependencies
         run: yarn install
 
       # Step 4: Validate l10n files
@@ -97,13 +97,16 @@ jobs:
 
       # Step 5: Run TypeScript type checks
       - name: Run TypeScript type check
+        if: ${{ always() && steps.install-dependencies.outcome == 'success' }}
         run: yarn typecheck
 
       # Step 6: Run unit tests (Jest)
       - name: Run unit tests
+        if: ${{ always() && steps.install-dependencies.outcome == 'success' }}
         run: yarn test --coverage
 
       - name: Run PocketPal gateway security tests
+        if: ${{ always() && steps.install-dependencies.outcome == 'success' }}
         run: node --test backend/test-pocketpal-api-v1.mjs
 
   # Render-count comparison of the PR merge commit against its base (main).
