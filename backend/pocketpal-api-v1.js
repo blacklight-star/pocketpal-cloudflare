@@ -1,7 +1,7 @@
 /*
  * GOLDSTAR L1 PocketPal Gateway API v1
  * Insert this module into personal-ai-manager after callFinancial().
- * Dependencies provided by the L1 Worker: env.DB, env.CACHE, callFinancial(), sha256Hex().
+ * Dependencies provided by the L1 Worker: env.DB, callFinancial(), sha256Hex().
  * Read-only manager operations only. This module never exposes Cloudflare secrets.
  */
 
