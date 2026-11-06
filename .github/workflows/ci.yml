@@ -570,6 +570,7 @@ jobs:
         run: |
           set -euo pipefail
           cd ios
+          # The generic iOS destination selects the device architecture; do not pass -arch.
           xcodebuild \
             -workspace PocketPal.xcworkspace \
             -scheme PocketPal \
@@ -577,7 +578,6 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
-            # generic/platform=iOS selects the device architecture; do not also pass -arch.
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
