@@ -120,3 +120,15 @@ A static app key is extractable from a distributed binary if hardcoded. The Pock
 - No existing L1↔L2 bridge secret in PocketPal, GitHub source, or GitHub Actions logs.
 - No unrestricted Cloudflare API passthrough.
 - No automatic deployment, deletion, or permission changes initiated solely by model output.
+
+
+## Current verified state — version 77 (2026-11-06)
+
+This section supersedes the earlier version-74/alias status above.
+
+- PocketPal now uses the immutable preview URL: `https://d6cb5013-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute` (Worker version 77, ID `d6cb5013-9302-4dde-9f4d-00c15e500de2`).
+- Version 77 inherits the dedicated `POCKETPAL_APP_KEY` secret binding and the isolated D1 database `pocketpal_gateway_preview` (`e67135cf-0098-43be-8f32-dde761fc8b22`). The app key is separate from every L1/L2 bridge credential and is not stored in GitHub.
+- The versioned preview hostname exposes only `/pocketpal/v1/execute`. Requests to `/`, `/webhook`, `/agent-report`, and `/__internal/github-recovery` are rejected with 404 before reaching the rest of the L1 Worker router.
+- The gateway requires HTTPS, a valid Bearer credential, JSON, an 8 KiB request cap, atomic rate limiting, fail-closed audit persistence, and the read-only manager/operation allowlist.
+- Production remains version 56 (`d6c82684-3239-45e1-bc5d-3b774bb694fa`) at 100% traffic and is bound to production D1 `2f9551be-0c6c-4750-9279-ba6035d60d26`. Version 77 has not been deployed to production and does not contain the PocketPal app-key binding in production.
+- CI live smoke coverage now expects HTTP 401 from the unauthenticated gateway path and HTTP 404 from the four non-gateway paths. A successful 401 proves the preview route and secret binding are active without transmitting the credential.
