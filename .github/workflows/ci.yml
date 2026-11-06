@@ -246,6 +246,7 @@ jobs:
         run: |
           cat > .env << 'EOL'
           FIREBASE_FUNCTIONS_URL=https://dummy-firebase-url.com
+          CLOUDFLARE_ADMIN_ENDPOINT=
 
           # PalsHub/Supabase Configuration
           SUPABASE_URL=https://dummy-supabase-url.supabase.co
@@ -433,6 +434,7 @@ jobs:
         run: |
           cat > .env << 'EOL'
           FIREBASE_FUNCTIONS_URL=https://dummy-firebase-url.com
+          CLOUDFLARE_ADMIN_ENDPOINT=
 
           # PalsHub/Supabase Configuration
           SUPABASE_URL=https://dummy-supabase-url.supabase.co
