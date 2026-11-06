@@ -148,6 +148,13 @@ jest.mock('../src/store', () => {
       setGatewayKey: jest.fn().mockResolvedValue(true),
       clearGatewayKey: jest.fn().mockResolvedValue(true),
     },
+    cloudflareAdminStore: {
+      isKeyLoaded: true,
+      hasGatewayKey: false,
+      getGatewayKey: jest.fn(() => ''),
+      setGatewayKey: jest.fn().mockResolvedValue(true),
+      clearGatewayKey: jest.fn().mockResolvedValue(true),
+    },
     purchaseStore: mockPurchaseStore,
     defaultCompletionSettings: mockDefaultCompletionSettings,
     NEW_SESSION_TITLE: 'New Session',
