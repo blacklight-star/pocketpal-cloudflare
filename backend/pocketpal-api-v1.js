@@ -110,6 +110,9 @@ async function pocketpalConsumeRateLimit(env, credentialHash) {
 async function handlePocketPalGateway(request, env) {
   const requestId = crypto.randomUUID();
   const url = new URL(request.url);
+  if (url.pathname !== "/pocketpal/v1/execute") {
+    return pocketpalResponse(404, { ok: false, error: "Not found." }, requestId);
+  }
   if (url.protocol !== "https:") {
     return pocketpalResponse(400, { ok: false, error: "HTTPS is required." }, requestId);
   }
@@ -134,8 +137,8 @@ async function handlePocketPalGateway(request, env) {
     return pocketpalResponse(401, { ok: false, error: "Unauthorized." }, requestId);
   }
 
-  const contentType = (request.headers.get("Content-Type") || "").toLowerCase();
-  if (!contentType.includes("application/json")) {
+  const contentType = (request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+  if (contentType !== "application/json") {
     return pocketpalResponse(400, { ok: false, error: "Content-Type must be application/json." }, requestId);
   }
   const declaredLengthHeader = request.headers.get("Content-Length");
