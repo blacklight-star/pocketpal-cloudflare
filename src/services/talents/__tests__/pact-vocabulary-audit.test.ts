@@ -97,6 +97,7 @@ describe('PACT vocabulary audit', () => {
       expect(talentRegistry.has('web_search')).toBe(true);
       expect(talentRegistry.has('read_url')).toBe(true);
       expect(talentRegistry.has('cloudflare_admin')).toBe(true);
+      expect(talentRegistry.has('cloudflare_admin')).toBe(true);
     });
 
     it('engines retrieved by name are executable', async () => {
@@ -134,6 +135,7 @@ describe('PACT vocabulary audit', () => {
       expect(names).toContain('datetime');
       expect(names).toContain('web_search');
       expect(names).toContain('read_url');
+      expect(names).toContain('cloudflare_admin');
       expect(names).toContain('cloudflare_admin');
     });
 
