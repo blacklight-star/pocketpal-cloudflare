@@ -69,12 +69,12 @@ function loadHandler({auditFails = false, rateAllowed = true, financialResponse 
   return {handle: context.__handle, env, calls};
 }
 
-function makeRequest(body, {key = 'a'.repeat(48), method = 'POST', url = 'https://personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute'} = {}) {
+function makeRequest(body, {key = 'a'.repeat(48), method = 'POST', contentType = 'application/json', url = 'https://personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute'} = {}) {
   return new Request(url, {
     method,
     headers: {
       Authorization: key === null ? '' : 'Bearer ' + key,
-      'Content-Type': 'application/json',
+      'Content-Type': contentType,
     },
     body: body === null ? undefined : body,
   });
@@ -131,4 +131,13 @@ test('L2 route is fixed to an allowlisted read-only path', async () => {
   const response = await handle(makeRequest(JSON.stringify({manager: 'level2', operation: 'financial.status'})), env);
   assert.equal(response.status, 200);
   assert.deepEqual(calls.financial, [{path: '/status', method: 'GET'}]);
+});
+
+test('handler rejects a different path and non-JSON media type', async () => {
+  const {handle, env} = loadHandler();
+  const body = JSON.stringify({manager: 'level1', operation: 'status'});
+  const wrongPath = await handle(makeRequest(body, {url: 'https://personal-ai-manager.goldstar-al-manager.workers.dev/not-the-gateway'}), env);
+  assert.equal(wrongPath.status, 404);
+  const wrongType = await handle(makeRequest(body, {contentType: 'application/jsonp'}), env);
+  assert.equal(wrongType.status, 400);
 });
