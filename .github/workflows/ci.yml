@@ -115,24 +115,41 @@ jobs:
         if: ${{ always() && steps.install-dependencies.outcome == 'success' }}
         run: |
           set -euo pipefail
-          URL="https://d378d9d3-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute"
+          URL="https://d6cb5013-personal-ai-manager.goldstar-al-manager.workers.dev"
           BODY='{"manager":"level1","operation":"status","args":{}}'
           RESPONSE="$(mktemp)"
+          check_status() {
+            expected="$1"
+            shift
+            actual="$(curl --connect-timeout 10 --max-time 20 --silent --show-error \
+              --output "$RESPONSE" --write-out '%{http_code}' "$@" || true)"
+            if [ "$actual" != "$expected" ]; then
+              echo "::error::Expected HTTP $expected from $*; received ${actual:-000}."
+              cat "$RESPONSE"
+              exit 1
+            fi
+          }
           for attempt in 1 2 3 4 5; do
             STATUS="$(curl --connect-timeout 10 --max-time 20 --silent --show-error \
               --output "$RESPONSE" --write-out '%{http_code}' \
               --request POST --header 'Content-Type: application/json' \
-              --data "$BODY" "$URL" || true)"
+              --data "$BODY" "$URL/pocketpal/v1/execute" || true)"
             if [ "$STATUS" = "401" ]; then
-              echo "OK: versioned preview is routed and rejects unauthenticated requests."
-              exit 0
+              break
             fi
             echo "Attempt $attempt returned HTTP ${STATUS:-000}; retrying."
             sleep 5
           done
-          echo "::error::Expected HTTP 401 from the live PocketPal preview; received ${STATUS:-000}."
-          cat "$RESPONSE"
-          exit 1
+          if [ "$STATUS" != "401" ]; then
+            echo "::error::Expected HTTP 401 from the live PocketPal gateway; received ${STATUS:-000}."
+            cat "$RESPONSE"
+            exit 1
+          fi
+          check_status 404 "$URL/"
+          check_status 404 --request POST "$URL/webhook"
+          check_status 404 --request POST "$URL/agent-report"
+          check_status 404 "$URL/__internal/github-recovery"
+          echo "OK: only the authenticated PocketPal gateway path is exposed on this preview hostname."
 
   # Render-count comparison of the PR merge commit against its base (main).
   # Restores the shared node_modules cache but never saves it: this job installs
