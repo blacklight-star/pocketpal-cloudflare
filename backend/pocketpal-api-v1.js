@@ -1,3 +1,5 @@
+/* global TextEncoder, TextDecoder, Response, crypto, sha256Hex, callFinancial */
+/* eslint-disable prettier/prettier */
 /*
  * GOLDSTAR L1 PocketPal Gateway API v1
  * Insert this module into personal-ai-manager after callFinancial().
