@@ -153,6 +153,22 @@
       "consentGivenDescription": "Queries and page reads may leave your device as described above.",
       "consentRevoke": "Revoke"
     },
+    "cloudflareAdmin": {
+      "title": "Cloudflare Manager Gateway",
+      "description": "Connect to the Goldstar manager hierarchy. The gateway credential is stored in iOS Keychain; Cloudflare account credentials remain on the server.",
+      "keyStatusSet": "Gateway credential is configured.",
+      "keyStatusMissing": "Gateway credential is not configured.",
+      "keyLoading": "Loading gateway credential...",
+      "setKeyButton": "Set credential",
+      "updateKeyButton": "Update credential",
+      "keySheetTitle": "Cloudflare gateway credential",
+      "keyDescription": "Paste the PocketPal gateway credential. Do not paste a Cloudflare API token here.",
+      "keyInputPlaceholder": "Paste the PocketPal gateway credential",
+      "keyLengthError": "Use a 32–256 character URL-safe gateway credential (letters, numbers, . _ ~ -).",
+      "saveKeyButton": "Save credential",
+      "clearKeyButton": "Clear credential",
+      "keyUpdateError": "Couldn't save the gateway credential."
+    },
     "apiSettingsTitle": "API Settings",
     "huggingFaceTokenLabel": "Hugging Face Token",
     "tokenIsSetDescription": "Token is set. Required for accessing gated models.",
@@ -902,14 +918,16 @@
         "calculate": "Math expressions",
         "datetime": "Date & time",
         "web_search": "Web search",
-        "read_url": "Read web page"
+        "read_url": "Read web page",
+        "cloudflare_admin": "Cloudflare manager"
       },
       "talentDescriptions": {
         "render_html": "Render HTML documents inline in chat",
         "calculate": "Evaluate mathematical expressions",
         "datetime": "Get the current date and time",
         "web_search": "Search the internet for current information (requires API key in Settings)",
-        "read_url": "Read the full content of a web page (requires API key in Settings)"
+        "read_url": "Read the full content of a web page (requires API key in Settings)",
+        "cloudflare_admin": "Read-only access to the Goldstar level-1 and level-2 managers"
       },
       "greeting": {
         "sectionLabel": "Greeting",

@@ -3,10 +3,13 @@ import {CalculateEngine} from './CalculateEngine';
 import {DatetimeEngine} from './DatetimeEngine';
 import {WebSearchEngine} from './WebSearchEngine';
 import {ReadUrlEngine} from './ReadUrlEngine';
+import {CloudflareAdminEngine} from './CloudflareAdminEngine';
+import {CloudflareAdminClient} from './CloudflareAdminClient';
 import {talentRegistry} from './TalentRegistry';
 import type {SearchAccess} from './searchAccess';
 import type {ToolDefinition, SystemPromptContext} from './types';
 import {searchProviderStore} from '../../store/SearchProviderStore';
+import {cloudflareAdminStore} from '../../store/CloudflareAdminStore';
 import {createSearchProvider, readWithDefaultReader} from '../search';
 
 export {TalentRegistry, talentRegistry} from './TalentRegistry';
@@ -17,6 +20,7 @@ export {CalculateEngine} from './CalculateEngine';
 export {DatetimeEngine} from './DatetimeEngine';
 export {WebSearchEngine} from './WebSearchEngine';
 export {ReadUrlEngine} from './ReadUrlEngine';
+export {CloudflareAdminEngine} from './CloudflareAdminEngine';
 export type {SearchAccess} from './searchAccess';
 // Deliberately narrow: the raw allowlist writers stay module-internal so all
 // writes happen inside services/talents (seed at run start, WebSearchEngine
@@ -45,6 +49,8 @@ function createSearchAccess(): SearchAccess {
   };
 }
 
+const cloudflareAdminClient = new CloudflareAdminClient(cloudflareAdminStore);
+
 let registered = false;
 
 /**
@@ -62,6 +68,7 @@ export function registerDefaultTalents(): void {
   const searchAccess = createSearchAccess();
   talentRegistry.register(new WebSearchEngine(searchAccess));
   talentRegistry.register(new ReadUrlEngine(searchAccess));
+  talentRegistry.register(new CloudflareAdminEngine(cloudflareAdminClient));
   registered = true;
 }
 
