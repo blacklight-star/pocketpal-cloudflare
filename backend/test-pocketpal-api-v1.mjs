@@ -1,0 +1,134 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import vm from 'node:vm';
+import {webcrypto} from 'node:crypto';
+
+const source = await readFile(new URL('./pocketpal-api-v1.js', import.meta.url), 'utf8');
+
+function loadHandler({auditFails = false, rateAllowed = true, financialResponse = {ok: true}} = {}) {
+  const calls = {audit: 0, rate: 0, financial: []};
+  const env = {
+    POCKETPAL_APP_KEY: 'a'.repeat(48),
+    DB: {
+      prepare(sql) {
+        return {
+          bind(...values) {
+            return {
+              async run() {
+                if (sql.includes('INSERT INTO gs_l1_audit')) {
+                  calls.audit++;
+                  if (auditFails) throw new Error('simulated audit outage');
+                  return {success: true};
+                }
+                throw new Error('Unexpected D1 run: ' + sql);
+              },
+              async first() {
+                if (sql.includes('INSERT INTO gs_pocketpal_rate_limits')) {
+                  calls.rate++;
+                  return rateAllowed ? {request_count: 1} : null;
+                }
+                if (sql.includes('MAX(version)')) return {version: 1};
+                return null;
+              },
+              async all() {
+                if (sql.includes('gs_org_units')) return {results: []};
+                if (sql.includes('gs_org_agents')) return {results: []};
+                if (sql.includes('gs_org_tasks')) return {results: []};
+                if (sql.includes('gs_org_connections')) return {results: []};
+                throw new Error('Unexpected D1 query: ' + sql);
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  const context = {
+    crypto: webcrypto,
+    TextEncoder,
+    TextDecoder,
+    Response,
+    URL,
+    JSON,
+    Math,
+    Date,
+    Number,
+    Object,
+    String,
+    RegExp,
+    Set,
+    Error,
+    sha256Hex: async value => 'sha256:' + String(value).length,
+    callFinancial: async (path, _env, method) => {
+      calls.financial.push({path, method});
+      return financialResponse;
+    },
+  };
+  vm.runInNewContext(source + '\nglobalThis.__handle = handlePocketPalGateway;', context);
+  return {handle: context.__handle, env, calls};
+}
+
+function makeRequest(body, {key = 'a'.repeat(48), method = 'POST', url = 'https://personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute'} = {}) {
+  return new Request(url, {
+    method,
+    headers: {
+      Authorization: key === null ? '' : 'Bearer ' + key,
+      'Content-Type': 'application/json',
+    },
+    body: body === null ? undefined : body,
+  });
+}
+
+test('valid L1 read is returned and audited', async () => {
+  const {handle, env, calls} = loadHandler();
+  const response = await handle(makeRequest(JSON.stringify({manager: 'level1', operation: 'status', args: {}})), env);
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.ok, true);
+  assert.equal(body.manager, 'level1');
+  assert.equal(calls.rate, 1);
+  assert.equal(calls.audit, 1);
+});
+
+test('missing and invalid credentials are rejected', async () => {
+  const {handle, env} = loadHandler();
+  const missing = await handle(makeRequest(JSON.stringify({manager: 'level1', operation: 'status'}), {key: null}), env);
+  assert.equal(missing.status, 401);
+  const invalid = await handle(makeRequest(JSON.stringify({manager: 'level1', operation: 'status'}), {key: 'b'.repeat(48)}), env);
+  assert.equal(invalid.status, 401);
+});
+
+test('audit outage fails closed and never returns manager data', async () => {
+  const {handle, env} = loadHandler({auditFails: true});
+  const response = await handle(makeRequest(JSON.stringify({manager: 'level1', operation: 'status'})), env);
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).ok, false);
+});
+
+test('atomic rate limit denial is audited and returns 429', async () => {
+  const {handle, env, calls} = loadHandler({rateAllowed: false});
+  const response = await handle(makeRequest(JSON.stringify({manager: 'level1', operation: 'status'})), env);
+  assert.equal(response.status, 429);
+  assert.equal(calls.audit, 1);
+});
+
+test('request body is bounded while streaming', async () => {
+  const {handle, env} = loadHandler();
+  const response = await handle(makeRequest('x'.repeat(8193)), env);
+  assert.equal(response.status, 413);
+});
+
+test('manager/operation mismatch is denied', async () => {
+  const {handle, env, calls} = loadHandler();
+  const response = await handle(makeRequest(JSON.stringify({manager: 'level1', operation: 'financial.pending'})), env);
+  assert.equal(response.status, 403);
+  assert.equal(calls.financial.length, 0);
+});
+
+test('L2 route is fixed to an allowlisted read-only path', async () => {
+  const {handle, env, calls} = loadHandler({financialResponse: {status: 'ok'}});
+  const response = await handle(makeRequest(JSON.stringify({manager: 'level2', operation: 'financial.status'})), env);
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls.financial, [{path: '/status', method: 'GET'}]);
+});
