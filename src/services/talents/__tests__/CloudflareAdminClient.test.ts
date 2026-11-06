@@ -103,3 +103,14 @@ describe('CloudflareAdminClient', () => {
     );
   });
 });
+
+
+  it('drops prototype-pollution keys from manager responses', () => {
+    const payload = JSON.parse(
+      '{"status":"ok","__proto__":{"polluted":true},"nested":{"constructor":{"prototype":{"polluted":true}}}}',
+    );
+    const redacted = redactSensitiveFields(payload) as Record<string, any>;
+    expect(Object.prototype.polluted).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(redacted, '__proto__')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(redacted.nested, 'constructor')).toBe(false);
+  });
