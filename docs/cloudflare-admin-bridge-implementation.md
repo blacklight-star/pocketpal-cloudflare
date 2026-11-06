@@ -58,7 +58,7 @@ L1 source-backup investigation (2026-11-06):
 - Cloudflare version metadata shows L1 versions 55 and 56 have the same script ETag (`47ebf88322598048d8a946d36b92c66f1994e62d4d375a102084135eab301a57)); version 56 adds the dedicated bridge secret binding. This is consistent with unchanged code between v55 and v56, but the Cloudflare API exposes only the latest uploaded script content, not the historical source bytes for v56.
 - Therefore the 6.2.1 KV source is a strong recovery baseline for production v56, but exact byte-for-byte identity to the v56 artifact is not independently proven. Preserve it; do not overwrite it.
 
-The live L1 D1 registry row `CORE_FINANCIAL_BRIDGE` has been updated to `preview_to_production_l2_verified_production_not_deployed`, with the owner-supplied test result and its limitations recorded. Task `FIN-V1-001` is `completed`; task `ORG-V1-003` (L1 registry/task-dispatch API) remains `blocked`.
+The live L1 D1 registry row `CORE_FINANCIAL_BRIDGE` has been updated to `preview_to_production_l2_verified_production_not_deployed`, with the owner-supplied test result and its limitations recorded. Task `FIN-V1-001` is `completed`; task `ORG-V1-003` (L1 registry/task-dispatch API) is now `in_progress`.
 
 This test verifies only the diagnostic read path. It does not validate every L2 operation, approve any pending/legacy rule, enable trading, or prove that a general PocketPal API exists.
 
@@ -66,7 +66,7 @@ This test verifies only the diagnostic read path. It does not validate every L2 
 
 The inspected L1 v6.2.2 source (latest uploaded version 72) does not define `/pocketpal/v1/execute` or another general PocketPal manager API. Its `/__preview/financial-bridge` route is diagnostic only; it returns key-presence flags and bounded L2 status/pending counts. Financial commands in this source are Telegram command handlers, not a documented PocketPal HTTP contract.
 
-The production L1 version 56 remains separate from the latest uploaded candidate. Its exact source must be recovered and backed up before any production patch. The read-only bridge diagnostic is now verified in preview, so the remaining backend work is to recover production L1 source, unblock/complete `ORG-V1-003`, and add a separate PocketPal-authenticated, versioned API without exposing bridge credentials.
+The production L1 version 56 remains separate from the latest uploaded candidate. A 6.2.1 source baseline exists in L1 KV and is consistent with the unchanged v55/v56 script ETag, but exact byte-for-byte identity to v56 remains unverified. The read-only bridge diagnostic is now verified. A standalone handler draft is tracked at `backend/pocketpal-api-v1.js`; it has not been uploaded to Cloudflare. Remaining work is to reconcile the source baseline, configure the separate `POCKETPAL_APP_KEY` secret, upload/test an isolated preview candidate, and only then connect the app. Production remains unchanged.
 
 ## Trust boundary and intended topology
 
@@ -93,15 +93,12 @@ A static app key is extractable from a distributed binary if hardcoded. The Pock
 
 ## Implementation sequence
 
-1. Recover and back up the exact source of production L1 version 56. Do not substitute latest-uploaded preview version 72.
-2. Preserve the now-verified read-only preview-to-production-L2 bridge and keep production deployments unchanged.
-3. Unblock/complete the L1 registry/task API work (ORG-V1-003), then add a separate versioned PocketPal API on L1. Initially expose only safe status/read operations, including L1 registry summaries and a read-only L2 financial status call through the verified bridge.
-4. Add PocketPal-specific authentication, request-size limits, rate limiting, strict operation schemas, redaction, and audit logging. Keep this credential separate from the L1↔L2 bridge secret.
-5. Verify the L1 API and its L2 calls independently before changing PocketPal.
-6. Add a dedicated Cloudflare Talent engine that calls only the L1 contract, validates arguments locally, aborts on cancellation, and emits safe summaries.
-7. Add connection settings backed by Keychain for the L1 endpoint and rotatable PocketPal credential.
-8. Add direct Cloudflare resource administration only after per-account API-token scopes and exact allowed operations are defined.
-9. Set up a separately signed iOS build using a new bundle ID and user-owned Apple signing credentials.
+1. Reconcile the 54,630-character L1 v6.2.1 KV backup with production version 56 as far as Cloudflare's version metadata permits. Preserve both KV copies; do not overwrite them.
+2. Upload the reviewed handler from `backend/pocketpal-api-v1.js` only as a separate preview alias (`pocketpal-test`). This preview upload is not a production deployment.
+3. Configure a dedicated `POCKETPAL_APP_KEY` secret for the L1 Worker, separate from both bridge keys. The same random URL-safe credential is entered in PocketPal Settings and stored in iOS Keychain.
+4. Test authentication (valid/invalid/missing key), request-size and schema rejection, manager/operation isolation, SQL parameterization, rate limiting, audit behavior, redaction, and all L2 read routes. The current KV fixed-window rate limit is best-effort under concurrent requests; do not treat it as a strict security boundary.
+5. Run repository CI. No workflow run is currently visible for the PR; TypeScript, lint, Jest, Android, and iOS build results remain unverified.
+6. Only after preview tests, CI, and explicit owner approval may the API be promoted to the production L1 Worker. Never deploy a preview candidate automatically.
 
 ## Explicit non-goals
 
