@@ -621,21 +621,23 @@ jobs:
           cd ..
           APP_PATH="ios/build/Build/Products/Release-iphoneos/PocketPal.app"
           test -d "$APP_PATH"
-          /usr/libexec/PlistBuddy -c 'Set :CFBundleDisplayName "PocketPal Goldstar"' "$APP_PATH/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName \"$APP_DISPLAY_NAME\"" "$APP_PATH/Info.plist"
           BUILT_BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist")"
-          test "$BUILT_BUNDLE_ID" = "ai.pocketpal.goldstar"
+          BUILT_DISPLAY_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$APP_PATH/Info.plist")"
+          test "$BUILT_BUNDLE_ID" = "$APP_BUNDLE_ID"
+          test "$BUILT_DISPLAY_NAME" = "$APP_DISPLAY_NAME"
           scripts/verify-ios-payload.sh "$APP_PATH" --require-marker
           scripts/verify-plus-gate.sh "$APP_PATH" --ungated
           mkdir -p "$RUNNER_TEMP/Payload"
           cp -R "$APP_PATH" "$RUNNER_TEMP/Payload/PocketPal.app"
           cd "$RUNNER_TEMP"
-          /usr/bin/zip -qry pocketpal-ios-unsigned.ipa Payload
+          /usr/bin/zip -qry pocketpal-goldstar-ios-unsigned.ipa Payload
 
       - name: Upload unsigned iOS device IPA
         uses: actions/upload-artifact@v4
         with:
           name: pocketpal-goldstar-ios-unsigned-ipa
-          path: ${{ runner.temp }}/pocketpal-ios-unsigned.ipa
+          path: ${{ runner.temp }}/pocketpal-goldstar-ios-unsigned.ipa
           retention-days: 7
 
       - name: Verify iOS payload
