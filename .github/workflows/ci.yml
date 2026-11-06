@@ -587,6 +587,22 @@ jobs:
         run: |
           set -euo pipefail
           cd ios
+          # Build a separate sideload app so the App Store PocketPal and its local data remain untouched.
+          APP_BUNDLE_ID="ai.pocketpal.goldstar"
+          APP_DISPLAY_NAME="PocketPal Goldstar"
+          /usr/libexec/PlistBuddy -c "Set :BUNDLE_ID $APP_BUNDLE_ID" PocketPal/GoogleService-Info.plist
+          cat > PocketPal/PocketPal-Sideload.entitlements <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>keychain-access-groups</key>
+            <array>
+              <string>$(AppIdentifierPrefix)ai.pocketpal.goldstar</string>
+            </array>
+          </dict>
+          </plist>
+          PLIST
           # The generic iOS destination selects the device architecture; do not pass -arch.
           xcodebuild \
             -workspace PocketPal.xcworkspace \
@@ -595,6 +611,8 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
+            PRODUCT_BUNDLE_IDENTIFIER="$APP_BUNDLE_ID" \
+            CODE_SIGN_ENTITLEMENTS=PocketPal/PocketPal-Sideload.entitlements \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
@@ -603,6 +621,9 @@ jobs:
           cd ..
           APP_PATH="ios/build/Build/Products/Release-iphoneos/PocketPal.app"
           test -d "$APP_PATH"
+          /usr/libexec/PlistBuddy -c 'Set :CFBundleDisplayName "PocketPal Goldstar"' "$APP_PATH/Info.plist"
+          BUILT_BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist")"
+          test "$BUILT_BUNDLE_ID" = "ai.pocketpal.goldstar"
           scripts/verify-ios-payload.sh "$APP_PATH" --require-marker
           scripts/verify-plus-gate.sh "$APP_PATH" --ungated
           mkdir -p "$RUNNER_TEMP/Payload"
@@ -613,7 +634,7 @@ jobs:
       - name: Upload unsigned iOS device IPA
         uses: actions/upload-artifact@v4
         with:
-          name: pocketpal-ios-unsigned-ipa
+          name: pocketpal-goldstar-ios-unsigned-ipa
           path: ${{ runner.temp }}/pocketpal-ios-unsigned.ipa
           retention-days: 7
 
