@@ -77,7 +77,11 @@ export class CloudflareAdminClient {
     args: Record<string, unknown>,
     signal?: AbortSignal,
   ): Promise<unknown> {
-    if (!CLOUDFLARE_ADMIN_ENDPOINT) {\n      throw new Error('Cloudflare gateway endpoint is invalid or not allowlisted.');\n    }\n\n    if (!this.credentialStore.isKeyLoaded) {
+    if (!CLOUDFLARE_ADMIN_ENDPOINT) {
+      throw new Error('Cloudflare gateway endpoint is invalid or not allowlisted.');
+    }
+
+    if (!this.credentialStore.isKeyLoaded) {
       throw new Error('Cloudflare gateway credential is still loading.');
     }
 
