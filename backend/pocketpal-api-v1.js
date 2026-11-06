@@ -123,7 +123,8 @@ async function handlePocketPalGateway(request, env) {
     "personal-ai-manager.goldstar-al-manager.workers.dev",
     "pocketpal-test-personal-ai-manager.goldstar-al-manager.workers.dev"
   ];
-  if (!allowedHosts.includes(url.hostname)) {
+  const isVersionedPreviewHost = /^[a-f0-9]{8}-personal-ai-manager\.goldstar-al-manager\.workers\.dev$/.test(url.hostname);
+  if (!allowedHosts.includes(url.hostname) && !isVersionedPreviewHost) {
     return new Response("Not found", { status: 404 });
   }
   if (request.method !== "POST") {
