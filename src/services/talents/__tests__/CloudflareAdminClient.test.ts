@@ -10,6 +10,12 @@ const credentialStore = {
 };
 
 describe('CloudflareAdminClient', () => {
+  it('defaults to the isolated L1 preview endpoint', () => {
+    expect(CLOUDFLARE_ADMIN_ENDPOINT).toBe(
+      'https://pocketpal-test-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute',
+    );
+  });
+
   const originalFetch = global.fetch;
 
   beforeEach(() => {
