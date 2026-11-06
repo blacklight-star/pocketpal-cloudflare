@@ -140,6 +140,25 @@ test('L2 route is fixed to an allowlisted read-only path', async () => {
   assert.equal(calls.financial[0].method, 'GET');
 });
 
+test('pinned versioned preview hostname is accepted', async () => {
+  const {handle, env} = loadHandler();
+  const response = await handle(makeRequest(
+    JSON.stringify({manager: 'level1', operation: 'status', args: {}}),
+    {url: 'https://d378d9d3-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute'},
+  ), env);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).ok, true);
+});
+
+test('unrecognized versioned worker host is rejected', async () => {
+  const {handle, env} = loadHandler();
+  const response = await handle(makeRequest(
+    JSON.stringify({manager: 'level1', operation: 'status', args: {}}),
+    {url: 'https://deadbeef-untrusted.goldstar-al-manager.workers.dev/pocketpal/v1/execute'},
+  ), env);
+  assert.equal(response.status, 404);
+});
+
 test('handler rejects a different path and non-JSON media type', async () => {
   const {handle, env} = loadHandler();
   const body = JSON.stringify({manager: 'level1', operation: 'status'});
