@@ -5,10 +5,10 @@ import {
 
 const PRODUCTION_GATEWAY_ENDPOINT =
   'https://personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
-// Pin PocketPal to the isolated version that carries POCKETPAL_APP_KEY and the preview D1 binding.
+// Pin PocketPal to the isolated version 76 that carries POCKETPAL_APP_KEY and the preview D1 binding.
 // This version URL does not follow production deployments or the moving preview alias.
 const PREVIEW_GATEWAY_ENDPOINT =
-  'https://61b64a03-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
+  'https://d378d9d3-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
 const configuredGatewayEndpoint = (configuredEndpoint || '').trim();
 
 // Only the reviewed L1 production endpoint and the pinned isolated preview are permitted.
