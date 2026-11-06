@@ -101,10 +101,9 @@ async function pocketpalReadBodyLimited(request, maxBytes) {
 async function pocketpalConsumeRateLimit(env, credentialHash) {
   if (!env.DB) throw new Error("Rate-limit database is unavailable.");
   const windowStart = Math.floor(Date.now() / 60000);
-  const rateKey = credentialHash + ":" + windowStart;
   const result = await env.DB.prepare(
-    "INSERT INTO gs_pocketpal_rate_limits (rate_key, request_count, expires_at) VALUES (?, 1, datetime('now', '+2 minutes')) ON CONFLICT(rate_key) DO UPDATE SET request_count = request_count + 1, expires_at = excluded.expires_at WHERE gs_pocketpal_rate_limits.request_count < 30 RETURNING request_count"
-  ).bind(rateKey).first();
+    "INSERT INTO gs_pocketpal_rate_limits (credential_hash, window_start, request_count) VALUES (?, ?, 1) ON CONFLICT(credential_hash) DO UPDATE SET window_start = excluded.window_start, request_count = CASE WHEN gs_pocketpal_rate_limits.window_start = excluded.window_start THEN gs_pocketpal_rate_limits.request_count + 1 ELSE 1 END WHERE gs_pocketpal_rate_limits.window_start <> excluded.window_start OR gs_pocketpal_rate_limits.request_count < 30 RETURNING request_count"
+  ).bind(credentialHash, windowStart).first();
   return !!result;
 }
 
