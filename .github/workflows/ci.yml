@@ -611,8 +611,8 @@ jobs:
           PBXPROJ="PocketPal.xcodeproj/project.pbxproj"
           test "$(grep -c 'PRODUCT_BUNDLE_IDENTIFIER = ai.pocketpal;' "$PBXPROJ")" -eq 3
           test "$(grep -c 'CODE_SIGN_ENTITLEMENTS = PocketPal/PocketPal.entitlements;' "$PBXPROJ")" -eq 3
-          perl -0pi -e 's/PRODUCT_BUNDLE_IDENTIFIER = ai\\.pocketpal;/PRODUCT_BUNDLE_IDENTIFIER = ai.pocketpal.goldstar;/g' "$PBXPROJ"
-          perl -0pi -e 's|CODE_SIGN_ENTITLEMENTS = PocketPal/PocketPal\\.entitlements;|CODE_SIGN_ENTITLEMENTS = PocketPal/PocketPal-Sideload.entitlements;|g' "$PBXPROJ"
+          perl -0pi -e 's/PRODUCT_BUNDLE_IDENTIFIER = ai\.pocketpal;/PRODUCT_BUNDLE_IDENTIFIER = ai.pocketpal.goldstar;/g' "$PBXPROJ"
+          perl -0pi -e 's|CODE_SIGN_ENTITLEMENTS = PocketPal/PocketPal\.entitlements;|CODE_SIGN_ENTITLEMENTS = PocketPal/PocketPal-Sideload.entitlements;|g' "$PBXPROJ"
           # The generic iOS destination selects the device architecture; do not pass -arch.
           xcodebuild \
             -workspace PocketPal.xcworkspace \
