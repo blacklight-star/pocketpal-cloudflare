@@ -5,12 +5,14 @@ import {
 
 const PRODUCTION_GATEWAY_ENDPOINT =
   'https://personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
+// Pin PocketPal to the isolated version that carries POCKETPAL_APP_KEY and the preview D1 binding.
+// This version URL does not follow production deployments or the moving preview alias.
 const PREVIEW_GATEWAY_ENDPOINT =
-  'https://pocketpal-test-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
+  'https://61b64a03-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
 const configuredGatewayEndpoint = (configuredEndpoint || '').trim();
 
-// Only the two reviewed L1 origins are permitted. An invalid explicit override
-// disables the client instead of silently sending preview traffic to production.
+// Only the reviewed L1 production endpoint and the pinned isolated preview are permitted.
+// An invalid explicit override disables the client instead of silently sending traffic elsewhere.
 export const CLOUDFLARE_ADMIN_ENDPOINT = configuredGatewayEndpoint
   ? [PRODUCTION_GATEWAY_ENDPOINT, PREVIEW_GATEWAY_ENDPOINT].includes(
       configuredGatewayEndpoint,
@@ -74,8 +76,8 @@ export function redactSensitiveFields(value: unknown): unknown {
   }
   if (typeof value === 'string') {
     return value
-      .replace(/Bearer\s+[A-Za-z0-9._~+/-]+=*/gi, 'Bearer [REDACTED]')
-      .replace(/(api[_-]?key|bridge[_-]?key|private[_-]?key|app[_-]?key|access[_-]?key|token|secret)\s*[:=]\s*[^\s,;]+/gi, '$1=[REDACTED]');
+      .replace(/Bearer\\s+[A-Za-z0-9._~+/-]+=*/gi, 'Bearer [REDACTED]')
+      .replace(/(api[_-]?key|bridge[_-]?key|private[_-]?key|app[_-]?key|access[_-]?key|token|secret)\\s*[:=]\\s*[^\\s,;]+/gi, '$1=[REDACTED]');
   }
   return value;
 }
