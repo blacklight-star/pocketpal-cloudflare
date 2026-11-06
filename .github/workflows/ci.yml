@@ -1,5 +1,5 @@
 name: CI Pipeline
-# Diagnostic commit: verify that GitHub Actions accepts push events on this fork branch.
+# Diagnostic commit 2: verify updated GitHub Actions allowlist.
 
 on:
   workflow_dispatch:
