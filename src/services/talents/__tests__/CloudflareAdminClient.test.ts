@@ -102,8 +102,6 @@ describe('CloudflareAdminClient', () => {
       'Authorization: Bearer [REDACTED]',
     );
   });
-});
-
 
   it('drops prototype-pollution keys from manager responses', () => {
     const payload = JSON.parse(
@@ -114,3 +112,4 @@ describe('CloudflareAdminClient', () => {
     expect(Object.prototype.hasOwnProperty.call(redacted, '__proto__')).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(redacted.nested, 'constructor')).toBe(false);
   });
+});
