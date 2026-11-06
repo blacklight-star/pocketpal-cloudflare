@@ -51,6 +51,13 @@ The Worker Scripts API distinguishes uploaded versions from production deploymen
 - L2 script is `goldstar-financial-v3`. Production remains version **19** at **100%**. L2 candidate version **23** is a staging candidate with null-safe empty pending-KV handling; it is explicitly not deployed and has no production data bindings.
 - L1 and L2 production deployments have not been changed by this PocketPal work.
 
+L1 source-backup investigation (2026-11-06):
+
+- The L1 `CACHE` KV namespace contains two Worker-source backups: `backup-personal-ai-manager-6.2.1-before-isolation-test` and `backup-personal-ai-manager-pre-change-2026-10-31`. Both are 54,630 characters and have the same SHA-256 (`72c2fb4d7874d22f405433a8652ce19c726753b999d9315652f6a2f9bec7b25c`). A separate 6.2.0 backup is 53,256 characters; the D1 snapshot key `backup-ai-manager-db-2026-10-31` also exists.
+- Prior project records reported that the live L1 v6.2.1 source matched the 54,630-character backup by length. This historical comparison did not record a SHA-256/ETag comparison.
+- Cloudflare version metadata shows L1 versions 55 and 56 have the same script ETag (`47ebf88322598048d8a946d36b92c66f1994e62d4d375a102084135eab301a57)); version 56 adds the dedicated bridge secret binding. This is consistent with unchanged code between v55 and v56, but the Cloudflare API exposes only the latest uploaded script content, not the historical source bytes for v56.
+- Therefore the 6.2.1 KV source is a strong recovery baseline for production v56, but exact byte-for-byte identity to the v56 artifact is not independently proven. Preserve it; do not overwrite it.
+
 The live L1 D1 registry row `CORE_FINANCIAL_BRIDGE` has been updated to `preview_to_production_l2_verified_production_not_deployed`, with the owner-supplied test result and its limitations recorded. Task `FIN-V1-001` is `completed`; task `ORG-V1-003` (L1 registry/task-dispatch API) remains `blocked`.
 
 This test verifies only the diagnostic read path. It does not validate every L2 operation, approve any pending/legacy rule, enable trading, or prove that a general PocketPal API exists.
