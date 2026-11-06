@@ -142,11 +142,12 @@ describe('PACT cleanup: deriveToolSchemas()', () => {
     expect(talentRegistry.getAll()).toHaveLength(0);
 
     const schemas = deriveToolSchemas();
-    expect(schemas).toHaveLength(5);
+    expect(schemas).toHaveLength(6);
 
     const names = schemas.map(s => s.function.name).sort();
     expect(names).toEqual([
       'calculate',
+      'cloudflare_admin',
       'datetime',
       'read_url',
       'render_html',
@@ -175,7 +176,7 @@ describe('PACT cleanup: deriveToolSchemas()', () => {
       tool_choice: 'auto' as const,
       jinja: true,
     };
-    expect(completionSettings.tools).toHaveLength(5);
+    expect(completionSettings.tools).toHaveLength(6);
     expect(completionSettings.tools[0].type).toBe('function');
   });
 });
