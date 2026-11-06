@@ -108,7 +108,7 @@ describe('CloudflareAdminClient', () => {
       '{"status":"ok","__proto__":{"polluted":true},"nested":{"constructor":{"prototype":{"polluted":true}}}}',
     );
     const redacted = redactSensitiveFields(payload) as Record<string, any>;
-    expect((Object.prototype as Record<string, unknown>).polluted).toBeUndefined();
+    expect(Reflect.get(Object.prototype, 'polluted')).toBeUndefined();
     expect(Object.getPrototypeOf(redacted)).toBe(Object.prototype);
     expect(Object.getPrototypeOf(redacted.nested)).toBe(Object.prototype);
     expect(Object.prototype.hasOwnProperty.call(redacted, '__proto__')).toBe(false);
