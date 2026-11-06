@@ -23,6 +23,7 @@ function pocketpalRedact(value) {
   if (value && typeof value === "object") {
     const out = {};
     for (const [key, child] of Object.entries(value)) {
+      if (key === "__proto__" || key === "prototype" || key === "constructor") continue;
       if (/(token|secret|password|api[_-]?key|bridge[_-]?key|private[_-]?key|app[_-]?key|access[_-]?key|authorization|credential)/i.test(key)) {
         out[key] = "[REDACTED]";
       } else {
