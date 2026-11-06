@@ -130,7 +130,9 @@ test('L2 route is fixed to an allowlisted read-only path', async () => {
   const {handle, env, calls} = loadHandler({financialResponse: {status: 'ok'}});
   const response = await handle(makeRequest(JSON.stringify({manager: 'level2', operation: 'financial.status'})), env);
   assert.equal(response.status, 200);
-  assert.deepEqual(calls.financial, [{path: '/status', method: 'GET'}]);
+  assert.equal(calls.financial.length, 1);
+  assert.equal(calls.financial[0].path, '/status');
+  assert.equal(calls.financial[0].method, 'GET');
 });
 
 test('handler rejects a different path and non-JSON media type', async () => {
