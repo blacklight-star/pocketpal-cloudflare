@@ -1,4 +1,6 @@
-import {CLOUDFLARE_ADMIN_ENDPOINT as configuredEndpoint} from '@env';
+import {
+  CLOUDFLARE_ADMIN_ENDPOINT as configuredEndpoint,
+} from '@env';
 
 const PRODUCTION_GATEWAY_ENDPOINT =
   'https://personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
@@ -9,7 +11,9 @@ const configuredGatewayEndpoint = (configuredEndpoint || '').trim();
 // Only the two reviewed L1 origins are permitted. An invalid explicit override
 // disables the client instead of silently sending preview traffic to production.
 export const CLOUDFLARE_ADMIN_ENDPOINT = configuredGatewayEndpoint
-  ? [PRODUCTION_GATEWAY_ENDPOINT, PREVIEW_GATEWAY_ENDPOINT].includes(configuredGatewayEndpoint)
+  ? [PRODUCTION_GATEWAY_ENDPOINT, PREVIEW_GATEWAY_ENDPOINT].includes(
+      configuredGatewayEndpoint,
+    )
     ? configuredGatewayEndpoint
     : ''
   : PREVIEW_GATEWAY_ENDPOINT;
@@ -52,8 +56,14 @@ export function redactSensitiveFields(value: unknown): unknown {
   if (value && typeof value === 'object') {
     const output: Record<string, unknown> = {};
     for (const [key, child] of Object.entries(value)) {
-      if (key === "__proto__" || key === "prototype" || key === "constructor") continue;
-      if (/(token|secret|password|api[_-]?key|bridge[_-]?key|private[_-]?key|app[_-]?key|access[_-]?key|authorization|credential)/i.test(key)) {
+      if (key === "__proto__" || key === "prototype" || key === "constructor") {
+        continue;
+      }
+      if (
+        /(token|secret|password|api[_-]?key|bridge[_-]?key|private[_-]?key|app[_-]?key|access[_-]?key|authorization|credential)/i.test(
+          key,
+        )
+      ) {
         output[key] = '[REDACTED]';
       } else {
         output[key] = redactSensitiveFields(child);
@@ -79,7 +89,9 @@ export class CloudflareAdminClient {
     signal?: AbortSignal,
   ): Promise<unknown> {
     if (!CLOUDFLARE_ADMIN_ENDPOINT) {
-      throw new Error('Cloudflare gateway endpoint is invalid or not allowlisted.');
+      throw new Error(
+        'Cloudflare gateway endpoint is invalid or not allowlisted.',
+      );
     }
 
     if (!this.credentialStore.isKeyLoaded) {
