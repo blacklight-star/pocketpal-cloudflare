@@ -145,8 +145,6 @@ test('handler rejects a different path and non-JSON media type', async () => {
 });
 
 test('redaction drops prototype-pollution keys from untrusted manager data', () => {
-  const {handle} = loadHandler();
-  const context = {JSON, Object};
   const payload = JSON.parse('{"status":"ok","__proto__":{"polluted":true},"nested":{"constructor":{"prototype":{"polluted":true}}}}');
   // Exercise the same redaction helper in its Worker realm.
   const sandbox = {payload};
