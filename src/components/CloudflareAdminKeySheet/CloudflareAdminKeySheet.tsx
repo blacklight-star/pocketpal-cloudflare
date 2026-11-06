@@ -117,7 +117,8 @@ export const CloudflareAdminKeySheet: React.FC<
         />
       </Sheet.ScrollView>
       <Sheet.Actions>
-        <View style={{flexDirection: 'row', justifyContent: 'flex-end', gap: 8}}>
+        <View
+          style={{flexDirection: 'row', justifyContent: 'flex-end', gap: 8}}>
           {cloudflareAdminStore.hasGatewayKey && (
             <Button
               mode="text"
