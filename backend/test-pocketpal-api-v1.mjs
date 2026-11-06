@@ -12,9 +12,28 @@ function loadHandler({auditFails = false, rateAllowed = true, financialResponse 
     POCKETPAL_APP_KEY: 'a'.repeat(48),
     DB: {
       prepare(sql) {
+        const query = {
+          async first() {
+            if (sql.includes('INSERT INTO gs_pocketpal_rate_limits')) {
+              calls.rate++;
+              return rateAllowed ? {request_count: 1} : null;
+            }
+            if (sql.includes('MAX(version)')) return {version: 1};
+            return null;
+          },
+          async all() {
+            if (sql.includes('gs_org_units')) return {results: []};
+            if (sql.includes('gs_org_agents')) return {results: []};
+            if (sql.includes('gs_org_tasks')) return {results: []};
+            if (sql.includes('gs_org_connections')) return {results: []};
+            throw new Error('Unexpected D1 query: ' + sql);
+          },
+        };
         return {
+          ...query,
           bind(...values) {
             return {
+              ...query,
               async run() {
                 if (sql.includes('INSERT INTO gs_l1_audit')) {
                   calls.audit++;
@@ -22,21 +41,6 @@ function loadHandler({auditFails = false, rateAllowed = true, financialResponse 
                   return {success: true};
                 }
                 throw new Error('Unexpected D1 run: ' + sql);
-              },
-              async first() {
-                if (sql.includes('INSERT INTO gs_pocketpal_rate_limits')) {
-                  calls.rate++;
-                  return rateAllowed ? {request_count: 1} : null;
-                }
-                if (sql.includes('MAX(version)')) return {version: 1};
-                return null;
-              },
-              async all() {
-                if (sql.includes('gs_org_units')) return {results: []};
-                if (sql.includes('gs_org_agents')) return {results: []};
-                if (sql.includes('gs_org_tasks')) return {results: []};
-                if (sql.includes('gs_org_connections')) return {results: []};
-                throw new Error('Unexpected D1 query: ' + sql);
               },
             };
           },
@@ -146,7 +150,6 @@ test('handler rejects a different path and non-JSON media type', async () => {
 
 test('redaction drops prototype-pollution keys from untrusted manager data', () => {
   const payload = JSON.parse('{"status":"ok","__proto__":{"polluted":true},"nested":{"constructor":{"prototype":{"polluted":true}}}}');
-  // Exercise the same redaction helper in its Worker realm.
   const sandbox = {payload};
   vm.runInNewContext(source + '\nglobalThis.__redact = pocketpalRedact;', sandbox);
   const redacted = sandbox.__redact(payload);
