@@ -51,20 +51,61 @@ function pocketpalResponse(status, body, requestId) {
 }
 
 async function pocketpalAudit(env, requestId, manager, operation, status, payloadHash) {
+  if (!env.DB) throw new Error("Audit database is unavailable.");
+  const result = await env.DB.prepare(
+    "INSERT INTO gs_l1_audit (event_id, actor_identity, event_type, resource_id, payload_hash, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))"
+  ).bind(
+    requestId,
+    "POCKETPAL_APP",
+    "pocketpal_read",
+    manager + "." + operation,
+    payloadHash,
+    JSON.stringify({ httpStatus: status, requestId: requestId })
+  ).run();
+  if (!result || result.success === false) throw new Error("Audit write failed.");
+}
+
+async function pocketpalAuditedResponse(env, requestId, manager, operation, status, body, payloadHash) {
   try {
-    await env.DB.prepare(
-      "INSERT INTO gs_l1_audit (event_id, actor_identity, event_type, resource_id, payload_hash, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))"
-    ).bind(
-      requestId,
-      "POCKETPAL_APP",
-      "pocketpal_read",
-      manager + "." + operation,
-      payloadHash,
-      JSON.stringify({ httpStatus: status, requestId: requestId })
-    ).run();
+    await pocketpalAudit(env, requestId, manager, operation, status, payloadHash);
+    return pocketpalResponse(status, body, requestId);
   } catch (error) {
-    // Audit failure must not disclose details or secrets to the client.
+    return pocketpalResponse(503, { ok: false, error: "Audit service is unavailable." }, requestId);
   }
+}
+
+async function pocketpalReadBodyLimited(request, maxBytes) {
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let total = 0;
+  let raw = "";
+  try {
+    while (true) {
+      const part = await reader.read();
+      if (part.done) break;
+      total += part.value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw new Error("BODY_TOO_LARGE");
+      }
+      raw += decoder.decode(part.value, { stream: true });
+    }
+    raw += decoder.decode();
+    return raw;
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+async function pocketpalConsumeRateLimit(env, credentialHash) {
+  if (!env.DB) throw new Error("Rate-limit database is unavailable.");
+  const windowStart = Math.floor(Date.now() / 60000);
+  const rateKey = credentialHash + ":" + windowStart;
+  const result = await env.DB.prepare(
+    "INSERT INTO gs_pocketpal_rate_limits (rate_key, request_count, expires_at) VALUES (?, 1, datetime('now', '+2 minutes')) ON CONFLICT(rate_key) DO UPDATE SET request_count = request_count + 1, expires_at = excluded.expires_at WHERE gs_pocketpal_rate_limits.request_count < 30 RETURNING request_count"
+  ).bind(rateKey).first();
+  return !!result;
 }
 
 async function handlePocketPalGateway(request, env) {
@@ -98,20 +139,21 @@ async function handlePocketPalGateway(request, env) {
   if (!contentType.includes("application/json")) {
     return pocketpalResponse(400, { ok: false, error: "Content-Type must be application/json." }, requestId);
   }
-  const declaredLength = Number(request.headers.get("Content-Length") || 0);
-  if (declaredLength > 8192) {
+  const declaredLengthHeader = request.headers.get("Content-Length");
+  const declaredLength = declaredLengthHeader === null ? null : Number(declaredLengthHeader);
+  if (declaredLength !== null && (!Number.isSafeInteger(declaredLength) || declaredLength < 0 || declaredLength > 8192)) {
     return pocketpalResponse(413, { ok: false, error: "Request body is too large." }, requestId);
   }
 
   let raw;
   let input;
   try {
-    raw = await request.text();
-    if (new TextEncoder().encode(raw).length > 8192) {
-      return pocketpalResponse(413, { ok: false, error: "Request body is too large." }, requestId);
-    }
+    raw = await pocketpalReadBodyLimited(request, 8192);
     input = JSON.parse(raw);
   } catch (error) {
+    if (error && error.message === "BODY_TOO_LARGE") {
+      return pocketpalResponse(413, { ok: false, error: "Request body is too large." }, requestId);
+    }
     return pocketpalResponse(400, { ok: false, error: "Invalid JSON request body." }, requestId);
   }
 
@@ -158,14 +200,14 @@ async function handlePocketPalGateway(request, env) {
 
   const payloadHash = await sha256Hex(raw);
   try {
-    const rateWindow = Math.floor(Date.now() / 60000);
-    const rateKey = "pocketpal:rate:" + await sha256Hex(expected) + ":" + rateWindow;
-    const currentCount = Number(await env.CACHE.get(rateKey) || "0");
-    if (!Number.isFinite(currentCount) || currentCount >= 30) {
-      await pocketpalAudit(env, requestId, manager, operation, 429, payloadHash);
-      return pocketpalResponse(429, { ok: false, error: "Rate limit exceeded." }, requestId);
+    const credentialHash = await sha256Hex(expected);
+    const withinLimit = await pocketpalConsumeRateLimit(env, credentialHash);
+    if (!withinLimit) {
+      return await pocketpalAuditedResponse(
+        env, requestId, manager, operation, 429,
+        { ok: false, error: "Rate limit exceeded." }, payloadHash
+      );
     }
-    await env.CACHE.put(rateKey, String(currentCount + 1), { expirationTtl: 120 });
   } catch (error) {
     return pocketpalResponse(503, { ok: false, error: "Rate limiter is unavailable." }, requestId);
   }
@@ -225,8 +267,10 @@ async function handlePocketPalGateway(request, env) {
       };
       const upstream = await callFinancial(paths[operation], env, "GET");
       if (upstream && upstream.error) {
-        await pocketpalAudit(env, requestId, manager, operation, 502, payloadHash);
-        return pocketpalResponse(502, { ok: false, error: "Financial manager request failed." }, requestId);
+        return await pocketpalAuditedResponse(
+          env, requestId, manager, operation, 502,
+          { ok: false, error: "Financial manager request failed." }, payloadHash
+        );
       }
       data = upstream;
     }
@@ -234,13 +278,19 @@ async function handlePocketPalGateway(request, env) {
     data = pocketpalRedact(data);
     const serialized = JSON.stringify(data);
     if (typeof serialized !== "string" || serialized.length > 24000) {
-      await pocketpalAudit(env, requestId, manager, operation, 502, payloadHash);
-      return pocketpalResponse(502, { ok: false, error: "Manager response exceeded the allowed size." }, requestId);
+      return await pocketpalAuditedResponse(
+        env, requestId, manager, operation, 502,
+        { ok: false, error: "Manager response exceeded the allowed size." }, payloadHash
+      );
     }
-    await pocketpalAudit(env, requestId, manager, operation, 200, payloadHash);
-    return pocketpalResponse(200, { ok: true, manager: manager, operation: operation, data: data }, requestId);
+    return await pocketpalAuditedResponse(
+      env, requestId, manager, operation, 200,
+      { ok: true, manager: manager, operation: operation, data: data }, payloadHash
+    );
   } catch (error) {
-    await pocketpalAudit(env, requestId, manager, operation, 500, payloadHash);
-    return pocketpalResponse(500, { ok: false, error: "Manager request failed." }, requestId);
+    return await pocketpalAuditedResponse(
+      env, requestId, manager, operation, 500,
+      { ok: false, error: "Manager request failed." }, payloadHash
+    );
   }
 }
