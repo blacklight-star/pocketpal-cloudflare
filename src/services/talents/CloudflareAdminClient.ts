@@ -52,6 +52,7 @@ export function redactSensitiveFields(value: unknown): unknown {
   if (value && typeof value === 'object') {
     const output: Record<string, unknown> = {};
     for (const [key, child] of Object.entries(value)) {
+      if (key === "__proto__" || key === "prototype" || key === "constructor") continue;
       if (/(token|secret|password|api[_-]?key|bridge[_-]?key|private[_-]?key|app[_-]?key|access[_-]?key|authorization|credential)/i.test(key)) {
         output[key] = '[REDACTED]';
       } else {
