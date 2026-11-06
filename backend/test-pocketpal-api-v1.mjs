@@ -65,7 +65,7 @@ function loadHandler({auditFails = false, rateAllowed = true, financialResponse 
       return financialResponse;
     },
   };
-  vm.runInNewContext(source + '\nglobalThis.__handle = handlePocketPalGateway;', context);
+  vm.runInNewContext(source + '\nglobalThis.__handle = handlePocketPalGateway; globalThis.__redact = pocketpalRedact;', context);
   return {handle: context.__handle, env, calls};
 }
 
@@ -142,4 +142,18 @@ test('handler rejects a different path and non-JSON media type', async () => {
   assert.equal(wrongPath.status, 404);
   const wrongType = await handle(makeRequest(body, {contentType: 'application/jsonp'}), env);
   assert.equal(wrongType.status, 400);
+});
+
+test('redaction drops prototype-pollution keys from untrusted manager data', () => {
+  const {handle} = loadHandler();
+  const context = {JSON, Object};
+  const payload = JSON.parse('{"status":"ok","__proto__":{"polluted":true},"nested":{"constructor":{"prototype":{"polluted":true}}}}');
+  // Exercise the same redaction helper in its Worker realm.
+  const sandbox = {payload};
+  vm.runInNewContext(source + '\nglobalThis.__redact = pocketpalRedact;', sandbox);
+  const redacted = sandbox.__redact(payload);
+  assert.equal(Object.getPrototypeOf(redacted).polluted, undefined);
+  assert.equal(Object.prototype.polluted, undefined);
+  assert.equal(Object.prototype.hasOwnProperty.call(redacted, '__proto__'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(redacted.nested, 'constructor'), false);
 });
