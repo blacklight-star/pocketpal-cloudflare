@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import {
   CLOUDFLARE_ADMIN_ENDPOINT,
   CloudflareAdminClient,
