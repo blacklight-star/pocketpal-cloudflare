@@ -577,7 +577,7 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
-            -arch arm64 \
+            # generic/platform=iOS selects the device architecture; do not also pass -arch.
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
