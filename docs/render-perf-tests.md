@@ -19,6 +19,7 @@ yarn test:perf:compare [base]  # measure base, then HEAD, then apply the render-
 - `yarn test` never runs perf tests.
 - `yarn test:perf:compare` needs a working tree without tracked changes (untracked files are ignored and measured on both sides). It checks out `base` (default: the merge-base with `origin/main`), measures it, checks your branch out again and measures it. When `yarn.lock` or `patches/` differ from the base, it wipes and reinstalls `node_modules` for the base and again for your branch.
 - On pull requests, the CI `perf` job runs the same command against the base branch. Its result is in the job summary, and the `render-perf` artifact holds `.reassure/`.
+- The base-side run uses the base application's source and shared Jest setup. When a screen begins reading a store, its mock must also be present in `jest/setup.ts` on the base branch; otherwise the baseline can fail before any render measurements are produced.
 
 ## Reading the result
 
