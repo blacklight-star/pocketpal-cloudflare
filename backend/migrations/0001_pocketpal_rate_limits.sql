@@ -1,6 +1,7 @@
 -- PocketPal gateway atomic fixed-window rate limiter.
 -- One row per credential; the minute window rolls the counter forward atomically.
--- Apply to the L1 D1 database before uploading/enabling the gateway route.
+-- Apply only to the D1 database bound to the Worker environment being deployed.
+-- During preview, use the isolated preview D1 database; do not apply to production.
 CREATE TABLE IF NOT EXISTS gs_pocketpal_rate_limits (
   credential_hash TEXT PRIMARY KEY NOT NULL,
   window_start INTEGER NOT NULL,
