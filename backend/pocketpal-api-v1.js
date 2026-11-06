@@ -70,6 +70,9 @@ async function pocketpalAudit(env, requestId, manager, operation, status, payloa
 async function handlePocketPalGateway(request, env) {
   const requestId = crypto.randomUUID();
   const url = new URL(request.url);
+  if (url.protocol !== "https:") {
+    return pocketpalResponse(400, { ok: false, error: "HTTPS is required." }, requestId);
+  }
   const allowedHosts = [
     "personal-ai-manager.goldstar-al-manager.workers.dev",
     "pocketpal-test-personal-ai-manager.goldstar-al-manager.workers.dev"
