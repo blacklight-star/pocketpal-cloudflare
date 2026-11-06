@@ -40,38 +40,26 @@ The current L2 source in `blacklight-star/goldstar-financial/src/worker.js` is v
 
 Do not expose `/knowledge/:style` to PocketPal: it returns the entire KV list and does not filter `validationStatus === "approved"`. Use `/status` and `/training/progress` for counts only; `/training/pending` is a separately labelled review queue. No approve, batch-ingest, strategy-synthesis, or analyze operation is included in v1.
 
-## Critical deployment-state distinction
+## Current Cloudflare deployment and bridge verification
 
-The Worker Scripts API returns the **latest uploaded source**, which is not necessarily the version receiving production traffic.
+The Worker Scripts API distinguishes uploaded versions from production deployments. The following state was checked on 2026-11-06:
 
-- Latest uploaded L1 version: version **60**, source declares `CONFIG.VERSION = 6.2.2`; it is annotated `bridge-test` and described as a preview candidate for owner-bound, expiring approval payloads, a five-minute reviewed-rule snapshot, payload/rule-set hashes, and a one-time request ID. It is explicitly **not deployed**.
-- Version **59** is annotated `github-recovery-once`; version **58** is an earlier `bridge-test` candidate; version **57** is the organization-registry candidate.
-- The actual L1 production deployment remains version **56** at **100% traffic**. Version 56's annotations say `Add secret: GOLDSTAR_FINANCIAL_BRIDGE_KEY`.
-- L2 production remains version **19** at **100% traffic**; L2 version **20** is a preview candidate with a D1 binding and matching approval-envelope logic, not deployed.
-- The current script-content endpoint returns the latest uploaded version 60, even when a version-56 query parameter is supplied. The version-specific GET endpoint exposes metadata/bindings, not the source code.
+- L1 script: `personal-ai-manager`. Latest uploaded candidate is version **72** (alias `bridge-test`), uploaded 2026-11-05. It is not a production deployment. The active production version remains **56**.
+- L1 version 72 contains the diagnostic route `/__preview/financial-bridge`, restricted to host `bridge-test-personal-ai-manager.goldstar-al-manager.workers.dev`. It calls `/status` and `/training/pending?limit=1` through `callFinancial()`.
+- L1 `callFinancial()` targets `https://goldstar-financial-v3.goldstar-nsl83.workers.dev`; therefore this diagnostic is a read-only preview-to-L2-production bridge check, not a general PocketPal API and not the separate L2 staging test.
+- The owner supplied a successful response from that route on 2026-11-06: both legacy and dedicated bridge-key presence flags were true; `bridgeOk=true`; status returned 0 approved rules, 113 legacy rules, 0 pending NDS, and `strategyReady=true`; the pending endpoint reported 5 total and 1 returned. The latter is expected because the route explicitly requests `limit=1`.
+- L2 script is `goldstar-financial-v3`. Production remains version **19** at **100%**. L2 candidate version **23** is a staging candidate with null-safe empty pending-KV handling; it is explicitly not deployed and has no production data bindings.
+- L1 and L2 production deployments have not been changed by this PocketPal work.
 
-Therefore, the v6.2.2 source examined below is **not confirmed to be the production source**. Do not deploy, overwrite, or base a production patch on it until version 56's exact source has been recovered or otherwise verified. Cloudflare's existing version/deployment history remains intact.
+The live L1 D1 registry row `CORE_FINANCIAL_BRIDGE` has been updated to `preview_to_production_l2_verified_production_not_deployed`, with the owner-supplied test result and its limitations recorded. Task `FIN-V1-001` is `completed`; task `ORG-V1-003` (L1 registry/task-dispatch API) remains `blocked`.
 
-## L1→L2 bridge evidence
-
-The latest uploaded L1 source (v6.2.2; version 59) contains:
-
-- `FINANCIAL_WORKER_URL = https://goldstar-financial-v3.goldstar-nsl83.workers.dev`
-- `callFinancial(endpoint, env, method, body)`, which uses `GOLDSTAR_FINANCIAL_BRIDGE_KEY` (falling back to `GOLDSTAR_API_KEY`) and sends both `X-API-Key` and `X-Goldstar-Bridge-Key`.
-- Telegram commands for financial status, health, training, pending review, approval, strategy, and knowledge.
-- A diagnostic route `/__preview/financial-bridge`, restricted to host `bridge-test-personal-ai-manager.goldstar-al-manager.workers.dev`.
-
-The deployed L1 version 56 metadata confirms secret bindings named `GOLDSTAR_API_KEY` and `GOLDSTAR_FINANCIAL_BRIDGE_KEY`, but its exact source and runtime bridge success have not yet been confirmed.
-
-The current `goldstar-financial-v3` source in GitHub identifies itself as version 3.0.1. It accepts the dedicated `X-Goldstar-Bridge-Key` against Worker secret `L1_BRIDGE_KEY`, as well as the legacy `X-API-Key` against `API_KEY`. Its `/health` route is public; other routes require authentication.
-
-Do not create a duplicate L1→L2 bridge or expose any existing bridge secret to the phone. The remaining work is to verify which bridge code is active in production and test it through a controlled preview before using it from PocketPal.
+This test verifies only the diagnostic read path. It does not validate every L2 operation, approve any pending/legacy rule, enable trading, or prove that a general PocketPal API exists.
 
 ## Missing capability for PocketPal
 
-The latest uploaded L1 v6.2.2 source (version 60) does not define a general PocketPal API. Its HTTP route list includes `/`, `/webhook`, `/setup`, `/github-test`, `/agent-report`, and internal/preview routes. The `/__preview/financial-bridge` route is a diagnostic only; it reports key presence and bounded L2 status/pending counts, not a general manager API. Financial commands in that source are Telegram command handlers, not a documented PocketPal HTTP contract.
+The inspected L1 v6.2.2 source (latest uploaded version 72) does not define `/pocketpal/v1/execute` or another general PocketPal manager API. Its `/__preview/financial-bridge` route is diagnostic only; it returns key-presence flags and bounded L2 status/pending counts. Financial commands in this source are Telegram command handlers, not a documented PocketPal HTTP contract.
 
-Because production is still on version 56, this route inventory must not be treated as the definitive production route list until version 56's code is recovered. A PocketPal API should be added as a separate, authenticated, versioned route only after the production source has been safely backed up.
+The production L1 version 56 remains separate from the latest uploaded candidate. Its exact source must be recovered and backed up before any production patch. The read-only bridge diagnostic is now verified in preview, so the remaining backend work is to recover production L1 source, unblock/complete `ORG-V1-003`, and add a separate PocketPal-authenticated, versioned API without exposing bridge credentials.
 
 ## Trust boundary and intended topology
 
@@ -98,9 +86,9 @@ A static app key is extractable from a distributed binary if hardcoded. The Pock
 
 ## Implementation sequence
 
-1. Recover and back up the exact source of production L1 version 56. Do not substitute latest-uploaded preview version 60.
-2. Complete the pending read-only L1→L2 bridge runtime test in the controlled preview; preserve the current fail-closed production deployments.
-3. Complete/coordinate the blocked L1 registry/task API work (ORG-V1-003) and define a small versioned PocketPal API on L1. Initially expose only safe status/read operations, including a read-only L2 financial status call through the verified bridge.
+1. Recover and back up the exact source of production L1 version 56. Do not substitute latest-uploaded preview version 72.
+2. Preserve the now-verified read-only preview-to-production-L2 bridge and keep production deployments unchanged.
+3. Unblock/complete the L1 registry/task API work (ORG-V1-003), then add a separate versioned PocketPal API on L1. Initially expose only safe status/read operations, including L1 registry summaries and a read-only L2 financial status call through the verified bridge.
 4. Add PocketPal-specific authentication, request-size limits, rate limiting, strict operation schemas, redaction, and audit logging. Keep this credential separate from the L1↔L2 bridge secret.
 5. Verify the L1 API and its L2 calls independently before changing PocketPal.
 6. Add a dedicated Cloudflare Talent engine that calls only the L1 contract, validates arguments locally, aborts on cancellation, and emits safe summaries.
