@@ -109,6 +109,31 @@ jobs:
         if: ${{ always() && steps.install-dependencies.outcome == 'success' }}
         run: node --test backend/test-pocketpal-api-v1.mjs
 
+      # Live preview smoke test: 401 proves the version URL is routed and the
+      # dedicated app-key binding is loaded, without sending or exposing a key.
+      - name: Verify live PocketPal preview authentication boundary
+        if: ${{ always() && steps.install-dependencies.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          URL="https://d378d9d3-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute"
+          BODY='{"manager":"level1","operation":"status","args":{}}'
+          RESPONSE="$(mktemp)"
+          for attempt in 1 2 3 4 5; do
+            STATUS="$(curl --connect-timeout 10 --max-time 20 --silent --show-error \
+              --output "$RESPONSE" --write-out '%{http_code}' \
+              --request POST --header 'Content-Type: application/json' \
+              --data "$BODY" "$URL" || true)"
+            if [ "$STATUS" = "401" ]; then
+              echo "OK: versioned preview is routed and rejects unauthenticated requests."
+              exit 0
+            fi
+            echo "Attempt $attempt returned HTTP ${STATUS:-000}; retrying."
+            sleep 5
+          done
+          echo "::error::Expected HTTP 401 from the live PocketPal preview; received ${STATUS:-000}."
+          cat "$RESPONSE"
+          exit 1
+
   # Render-count comparison of the PR merge commit against its base (main).
   # Restores the shared node_modules cache but never saves it: this job installs
   # other commits' dependencies and skips llama.rn's native postinstall.
