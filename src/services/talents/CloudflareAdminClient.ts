@@ -12,7 +12,7 @@ export const CLOUDFLARE_ADMIN_ENDPOINT = configuredGatewayEndpoint
   ? [PRODUCTION_GATEWAY_ENDPOINT, PREVIEW_GATEWAY_ENDPOINT].includes(configuredGatewayEndpoint)
     ? configuredGatewayEndpoint
     : ''
-  : PRODUCTION_GATEWAY_ENDPOINT;
+  : PREVIEW_GATEWAY_ENDPOINT;
 
 export type CloudflareManagerLevel = 'level1' | 'level2';
 
