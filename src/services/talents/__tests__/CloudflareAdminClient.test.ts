@@ -11,9 +11,16 @@ const credentialStore = {
 };
 
 describe('CloudflareAdminClient', () => {
-  it('defaults to the pinned isolated L1 preview v77', () => {
+  it('defaults to the pinned isolated L1 preview v78', () => {
     expect(CLOUDFLARE_ADMIN_ENDPOINT).toBe(
-      'https://d6cb5013-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute',
+      'https://a0a94890-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute',
+    );
+  });
+
+
+  it('does not select the production L1 endpoint during the preview-only rollout', () => {
+    expect(CLOUDFLARE_ADMIN_ENDPOINT).not.toBe(
+      'https://personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute',
     );
   });
 

@@ -3,20 +3,16 @@ import {
   CLOUDFLARE_ADMIN_ENDPOINT as configuredEndpoint,
 } from '@env';
 
-const PRODUCTION_GATEWAY_ENDPOINT =
-  'https://personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
-// Pin PocketPal to the isolated version 77 that carries POCKETPAL_APP_KEY and the preview D1 binding.
-// This version URL does not follow production deployments or the moving preview alias.
+// Candidate-only: pin PocketPal to isolated L1 preview version 78.
+// This immutable URL does not follow production deployments or a moving preview alias.
 const PREVIEW_GATEWAY_ENDPOINT =
-  'https://d6cb5013-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
+  'https://a0a94890-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
 const configuredGatewayEndpoint = (configuredEndpoint || '').trim();
 
-// Only the reviewed L1 production endpoint and the pinned isolated preview are permitted.
-// An invalid explicit override disables the client instead of silently sending traffic elsewhere.
+// Production is intentionally excluded until a separate, approved rollout.
+// Any non-preview override disables the client rather than redirecting traffic.
 export const CLOUDFLARE_ADMIN_ENDPOINT = configuredGatewayEndpoint
-  ? [PRODUCTION_GATEWAY_ENDPOINT, PREVIEW_GATEWAY_ENDPOINT].includes(
-      configuredGatewayEndpoint,
-    )
+  ? configuredGatewayEndpoint === PREVIEW_GATEWAY_ENDPOINT
     ? configuredGatewayEndpoint
     : ''
   : PREVIEW_GATEWAY_ENDPOINT;

@@ -120,7 +120,8 @@ jobs:
         if: ${{ always() && steps.install-dependencies.outcome == 'success' }}
         run: |
           set -euo pipefail
-          URL="https://d6cb5013-personal-ai-manager.goldstar-al-manager.workers.dev"
+          # Candidate V78 is the current isolated preview; Production L1 v56 remains untouched.
+          URL="https://a0a94890-personal-ai-manager.goldstar-al-manager.workers.dev"
           BODY='{"manager":"level1","operation":"status","args":{}}'
           RESPONSE="$(mktemp)"
           check_status() {
@@ -151,10 +152,12 @@ jobs:
             exit 1
           fi
           check_status 404 "$URL/"
+          check_status 404 "$URL/pocketpal/v1/approve"
+          check_status 404 "$URL/pocketpal/v1/trade"
           check_status 404 --request POST "$URL/webhook"
           check_status 404 --request POST "$URL/agent-report"
           check_status 404 "$URL/__internal/github-recovery"
-          echo "OK: only the authenticated PocketPal gateway path is exposed on this preview hostname."
+          echo "OK: only the PocketPal execute/enrollment paths are exposed on this preview hostname."
 
   # Render-count comparison of the PR merge commit against its base (main).
   # Restores the shared node_modules cache but never saves it: this job installs
@@ -205,7 +208,7 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     needs: [build-and-test, detect-changes]
-    if: github.event_name == 'push' && needs.detect-changes.outputs.translation_only != 'true'
+    if: github.event_name == 'push' && github.ref_name == 'main' && needs.detect-changes.outputs.translation_only != 'true'
     env:
       # Declared here rather than in android/gradle.properties: llama.rn's own
       # android/gradle.properties sets rnllamaBuildFromSource, and a subproject's
@@ -446,7 +449,7 @@ jobs:
   build-ios:
     runs-on: macos-26  # Keep CI on the same Xcode major as the release workflow
     needs: [detect-changes]
-    if: github.event_name == 'push' && needs.detect-changes.outputs.translation_only != 'true'
+    if: github.event_name == 'push' && github.ref_name == 'main' && needs.detect-changes.outputs.translation_only != 'true'
     env:
       NODE_OPTIONS: '--max-old-space-size=8192'
     steps:

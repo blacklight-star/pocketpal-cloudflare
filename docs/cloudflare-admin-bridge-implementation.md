@@ -40,7 +40,7 @@ The current L2 source in `blacklight-star/goldstar-financial/src/worker.js` is v
 
 Do not expose `/knowledge/:style` to PocketPal: it returns the entire KV list and does not filter `validationStatus === "approved"`. Use `/status` and `/training/progress` for counts only; `/training/pending` is a separately labelled review queue. No approve, batch-ingest, strategy-synthesis, or analyze operation is included in v1.
 
-## Current Cloudflare deployment and bridge verification
+## Historical Cloudflare deployment and bridge verification (2026-11-06; superseded by the current state below)
 
 The Worker Scripts API distinguishes uploaded versions from production deployments. The following state was checked on 2026-11-06:
 
@@ -65,7 +65,7 @@ The live L1 D1 registry row `CORE_FINANCIAL_BRIDGE` has been updated to `preview
 
 This test verifies only the diagnostic read path. It does not validate every L2 operation, approve any pending/legacy rule, enable trading, or prove that a general PocketPal API exists.
 
-## PocketPal gateway — isolated L1 preview candidate
+## Historical PocketPal gateway preview notes (versions 74–77; superseded by the current state below)
 
 The live L1 Worker source was retrieved directly from the Cloudflare Scripts API on 2026-11-06. The current uploaded candidate (v72) contains the existing `callFinancial(endpoint, env, method, body)` helper and `sha256Hex(value)` helper required by the PocketPal handler. The source was parsed from the multipart response before modification; the upload validator accepted the resulting ES module.
 
@@ -122,13 +122,18 @@ A static app key is extractable from a distributed binary if hardcoded. The Pock
 - No automatic deployment, deletion, or permission changes initiated solely by model output.
 
 
-## Current verified state — version 77 (2026-11-06)
+## Current verified state — version 78 (2026-11-07)
 
-This section supersedes the earlier version-74/alias status above.
+This section supersedes the earlier version-74 and version-77 implementation notes above.
 
-- PocketPal now uses the immutable preview URL: `https://d6cb5013-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute` (Worker version 77, ID `d6cb5013-9302-4dde-9f4d-00c15e500de2`).
-- Version 77 inherits the dedicated `POCKETPAL_APP_KEY` secret binding and the isolated D1 database `pocketpal_gateway_preview` (`e67135cf-0098-43be-8f32-dde761fc8b22`). The app key is separate from every L1/L2 bridge credential and is not stored in GitHub.
-- The versioned preview hostname exposes only `/pocketpal/v1/execute`. Requests to `/`, `/webhook`, `/agent-report`, and `/__internal/github-recovery` are rejected with 404 before reaching the rest of the L1 Worker router.
-- The gateway requires HTTPS, a valid Bearer credential, JSON, an 8 KiB request cap, atomic rate limiting, fail-closed audit persistence, and the read-only manager/operation allowlist.
-- Production remains version 56 (`d6c82684-3239-45e1-bc5d-3b774bb694fa`) at 100% traffic and is bound to production D1 `2f9551be-0c6c-4750-9279-ba6035d60d26`. Version 77 has not been deployed to production and does not contain the PocketPal app-key binding in production.
-- CI live smoke coverage now expects HTTP 401 from the unauthenticated gateway path and HTTP 404 from the four non-gateway paths. A successful 401 proves the preview route and secret binding are active without transmitting the credential.
+- Active L1 Production remains version **56** at **100%** traffic. No PocketPal production deployment was created.
+- Latest uploaded L1 Candidate is version **78** (ID `a0a94890-d7db-4b7c-8d97-fdb5a29ae866`), `has_preview=true`, and is absent from Production deployment traffic.
+- The immutable preview endpoint is `https://a0a94890-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute`.
+- The versioned preview hostname exposes only `/pocketpal/v1/execute` and `/pocketpal/v1/enroll`. Other L1 paths are rejected before the normal router.
+- Candidate V78 has the dedicated `POCKETPAL_APP_KEY` secret binding and the isolated `pocketpal_gateway_preview` D1 binding. Active Production V56 does not bind the PocketPal app key.
+- Candidate code enforces HTTPS, Bearer authentication, an 8 KiB streaming request cap, atomic D1 rate limiting, fail-closed audit persistence, recursive redaction, and the fixed read-only manager/operation allowlist.
+- The preview D1 migration is present only in the preview database. The Production L1 D1 schema was not altered. No Production Worker, route, traffic, secret, KV, D1, account, or permission change was made.
+- Preview D1 currently has no successful gateway audit or rate-limit rows; its only enrollment token is expired. No valid-key end-to-end request has been confirmed.
+- The hardening branch pins the app client and live smoke test to V78. The smoke test checks unauthenticated execution (HTTP 401) and 404 responses for non-gateway, approval, and trade paths. This verifies the unauthenticated boundary, not a successful authenticated operation.
+- The app-side key store uses iOS Keychain. The secret value is not included in source, CI, documentation, or chat. A real-device test with the owner-held key remains pending.
+- Production L1, L2 Production, and the Production Trainer remain unchanged. No deployment, merge, approval, ingestion, strategy synthesis, or trade was performed.
