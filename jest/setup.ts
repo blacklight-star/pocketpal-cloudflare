@@ -1,8 +1,6 @@
 import 'react-native-gesture-handler/jestSetup';
 import mockClipboard from '@react-native-clipboard/clipboard/jest/clipboard-mock.js';
 
-import 'react-native-gesture-handler/jestSetup';
-
 // __E2E__ is a build-time constant in prod/e2e builds (see babel.config.js),
 // but in Jest the transform-define plugin is disabled so it stays a runtime
 // global. Default to true so adapter tests render their components; tests

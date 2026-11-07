@@ -50,6 +50,7 @@ describe('TalentRegistry', () => {
       expect(talentRegistry.has('datetime')).toBe(true);
       expect(talentRegistry.has('web_search')).toBe(true);
       expect(talentRegistry.has('read_url')).toBe(true);
+      expect(talentRegistry.has('cloudflare_admin')).toBe(true);
     });
 
     it('is idempotent across calls', () => {

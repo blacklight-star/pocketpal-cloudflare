@@ -96,7 +96,6 @@ describe('CloudflareAdminEngine', () => {
     expect(result.type).toBe('error');
   });
 
-
   it('forwards cancellation signal to the gateway client', async () => {
     const controller = new AbortController();
     await engine.execute(

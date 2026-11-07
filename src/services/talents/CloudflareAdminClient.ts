@@ -1,5 +1,21 @@
-export const CLOUDFLARE_ADMIN_ENDPOINT =
-  'https://personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
+/* eslint-disable prettier/prettier */
+import {
+  CLOUDFLARE_ADMIN_ENDPOINT as configuredEndpoint,
+} from '@env';
+
+// Candidate-only: pin PocketPal to isolated L1 preview version 78.
+// This immutable URL does not follow production deployments or a moving preview alias.
+const PREVIEW_GATEWAY_ENDPOINT =
+  'https://a0a94890-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
+const configuredGatewayEndpoint = (configuredEndpoint || '').trim();
+
+// Production is intentionally excluded until a separate, approved rollout.
+// Any non-preview override disables the client rather than redirecting traffic.
+export const CLOUDFLARE_ADMIN_ENDPOINT = configuredGatewayEndpoint
+  ? configuredGatewayEndpoint === PREVIEW_GATEWAY_ENDPOINT
+    ? configuredGatewayEndpoint
+    : ''
+  : PREVIEW_GATEWAY_ENDPOINT;
 
 export type CloudflareManagerLevel = 'level1' | 'level2';
 
@@ -39,7 +55,14 @@ export function redactSensitiveFields(value: unknown): unknown {
   if (value && typeof value === 'object') {
     const output: Record<string, unknown> = {};
     for (const [key, child] of Object.entries(value)) {
-      if (/(token|secret|password|api[_-]?key|bridge[_-]?key|private[_-]?key|app[_-]?key|access[_-]?key|authorization|credential)/i.test(key)) {
+      if (key === "__proto__" || key === "prototype" || key === "constructor") {
+        continue;
+      }
+      if (
+        /(token|secret|password|api[_-]?key|bridge[_-]?key|private[_-]?key|app[_-]?key|access[_-]?key|authorization|credential)/i.test(
+          key,
+        )
+      ) {
         output[key] = '[REDACTED]';
       } else {
         output[key] = redactSensitiveFields(child);
@@ -64,6 +87,12 @@ export class CloudflareAdminClient {
     args: Record<string, unknown>,
     signal?: AbortSignal,
   ): Promise<unknown> {
+    if (!CLOUDFLARE_ADMIN_ENDPOINT) {
+      throw new Error(
+        'Cloudflare gateway endpoint is invalid or not allowlisted.',
+      );
+    }
+
     if (!this.credentialStore.isKeyLoaded) {
       throw new Error('Cloudflare gateway credential is still loading.');
     }
