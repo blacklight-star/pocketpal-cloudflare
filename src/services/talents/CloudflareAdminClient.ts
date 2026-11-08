@@ -3,10 +3,10 @@ import {
   CLOUDFLARE_ADMIN_ENDPOINT as configuredEndpoint,
 } from '@env';
 
-// Candidate-only: pin PocketPal to isolated L1 preview version 81.
+// Candidate-only: pin PocketPal to isolated L1 preview version 82.
 // This immutable URL does not follow production deployments or a moving preview alias.
 const PREVIEW_GATEWAY_ENDPOINT =
-  'https://adab35f2-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
+  'https://a129a762-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute';
 const configuredGatewayEndpoint = (configuredEndpoint || '').trim();
 
 // Production is intentionally excluded until a separate, approved rollout.
