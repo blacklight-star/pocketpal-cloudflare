@@ -10,6 +10,7 @@ This is the contract implemented by the app-side `cloudflare_admin` Talent and u
 - Authentication: `Authorization: Bearer <POCKETPAL_APP_KEY>`
 - `POCKETPAL_APP_KEY` is a dedicated app-to-gateway Worker secret, separate from `GOLDSTAR_FINANCIAL_BRIDGE_KEY` and `GOLDSTAR_API_KEY`. Its secret binding is present on Candidate V78 only; it is not bound to active Production V56. The value is never stored in GitHub or chat.
 - The app stores only the app credential in iOS Keychain. The L1↔L2 bridge credential stays in Cloudflare Worker secrets.
+- Candidate V78's `DB` binding is isolated for audit/rate limiting. A separate `ORG_DB` binding to the real L1 registry is required before valid L1 data reads can succeed; this binding is not present yet.
 - Reject missing, malformed, or invalid credentials with HTTP 401. Never echo credentials in errors or logs.
 
 ## Request schema
@@ -28,7 +29,7 @@ The gateway must reject unknown properties, unknown operations, invalid manager/
 
 ## Allowlist
 
-The L1 database contains a live GOLDSTAR organizational registry. The v1 app API should read that registry, not the older legacy `agents` and `tasks` tables. L1 data is sourced from `gs_org_units`, `gs_org_agents`, `gs_org_tasks`, `gs_org_access_policies`, and `gs_org_connections`.
+The live GOLDSTAR organizational registry is in the L1 Production D1 database. Candidate V78's `DB` binding points to an isolated PocketPal control database (audit and rate-limit tables only), which contains no organization records. Therefore the gateway must use a separate `ORG_DB` binding for reads from `gs_org_units`, `gs_org_agents`, `gs_org_tasks`, `gs_org_access_policies`, and `gs_org_connections`. Until `ORG_DB` is explicitly bound to the L1 registry database, every L1 data operation must fail closed with HTTP 503 rather than returning misleading empty results. Keep `DB` dedicated to PocketPal audit and rate limiting.
 
 | Manager | Operation | Arguments | Expected behavior |
 |---|---|---|---|
