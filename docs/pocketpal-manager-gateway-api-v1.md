@@ -88,7 +88,7 @@ Use appropriate HTTP status codes: 400 invalid schema/arguments, 401 invalid app
 8. Run the isolated gateway tests with `node --test backend/test-pocketpal-api-v1.mjs`; CI runs this suite on pull requests. Keep the route preview-only until a valid-key request, every allowed read operation, audit/rate-limit behavior, and a real-device app test pass. Do not apply the migration to Production or replace active V56 merely because a newer source upload exists.
 
 
-## Current deployment boundary — 2026-11-07
+## Current deployment boundary — 2026-11-08
 
 - Candidate V80 is preview-only; active L1 Production remains V56 at 100% traffic.
 - The versioned preview host exposes only `/pocketpal/v1/execute` and `/pocketpal/v1/enroll`; non-PocketPal paths are rejected before the normal L1 router.
