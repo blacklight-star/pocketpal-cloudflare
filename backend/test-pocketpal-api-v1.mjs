@@ -7,10 +7,32 @@ import {webcrypto} from 'node:crypto';
 
 const source = await readFile(new URL('./pocketpal-api-v1.js', import.meta.url), 'utf8');
 
-function loadHandler({auditFails = false, rateAllowed = true, financialResponse = {ok: true}} = {}) {
+function loadHandler({auditFails = false, rateAllowed = true, withOrgDb = true, financialResponse = {ok: true}} = {}) {
   const calls = {audit: 0, rate: 0, financial: []};
   const env = {
     POCKETPAL_APP_KEY: 'a'.repeat(48),
+    ORG_DB: withOrgDb ? {
+      prepare(sql) {
+        const query = {
+          async first() {
+            if (sql.includes('MAX(version)')) return {version: 1};
+            throw new Error('Unexpected organization D1 first query: ' + sql);
+          },
+          async all() {
+            if (sql.includes('gs_org_units')) return {results: []};
+            if (sql.includes('gs_org_agents')) return {results: []};
+            if (sql.includes('gs_org_tasks')) return {results: []};
+            if (sql.includes('gs_org_connections')) return {results: []};
+            if (sql.includes('gs_org_access_policies')) return {results: []};
+            throw new Error('Unexpected organization D1 query: ' + sql);
+          },
+        };
+        return {
+          ...query,
+          bind() { return query; },
+        };
+      },
+    } : undefined,
     DB: {
       prepare(sql) {
         const query = {
@@ -19,15 +41,10 @@ function loadHandler({auditFails = false, rateAllowed = true, financialResponse 
               calls.rate++;
               return rateAllowed ? {request_count: 1} : null;
             }
-            if (sql.includes('MAX(version)')) return {version: 1};
             return null;
           },
           async all() {
-            if (sql.includes('gs_org_units')) return {results: []};
-            if (sql.includes('gs_org_agents')) return {results: []};
-            if (sql.includes('gs_org_tasks')) return {results: []};
-            if (sql.includes('gs_org_connections')) return {results: []};
-            throw new Error('Unexpected D1 query: ' + sql);
+            throw new Error('Organization reads must not use the audit/rate-limit D1: ' + sql);
           },
         };
         return {
@@ -94,6 +111,15 @@ test('valid L1 read is returned and audited', async () => {
   assert.equal(body.manager, 'level1');
   assert.equal(calls.rate, 1);
   assert.equal(calls.audit, 1);
+});
+
+test('L1 reads fail closed when the dedicated organization database is not bound', async () => {
+  const {handle, env, calls} = loadHandler({withOrgDb: false});
+  const response = await handle(makeRequest(JSON.stringify({manager: 'level1', operation: 'status', args: {}})), env);
+  assert.equal(response.status, 503);
+  assert.equal(calls.audit, 1);
+  assert.equal(calls.rate, 1);
+  assert.equal((await response.json()).error, 'L1 organization data source is unavailable.');
 });
 
 test('missing and invalid credentials are rejected', async () => {
