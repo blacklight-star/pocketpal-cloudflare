@@ -221,13 +221,16 @@ async function handlePocketPalGateway(request, env) {
   try {
     let data;
     if (manager === "level1") {
+      if (!env.ORG_DB || typeof env.ORG_DB.prepare !== "function") {
+        return await pocketpalAuditedResponse(env, requestId, manager, operation, 503, { ok: false, error: "L1 organization data source is unavailable." }, payloadHash);
+      }
       if (operation === "status") {
         const results = await Promise.all([
-          env.DB.prepare("SELECT manager_level, status, COUNT(*) AS count FROM gs_org_units GROUP BY manager_level, status ORDER BY manager_level, status").all(),
-          env.DB.prepare("SELECT level, status, COUNT(*) AS count FROM gs_org_agents GROUP BY level, status ORDER BY level, status").all(),
-          env.DB.prepare("SELECT status, COUNT(*) AS count FROM gs_org_tasks GROUP BY status ORDER BY status").all(),
-          env.DB.prepare("SELECT connection_id, status, last_verified_at FROM gs_org_connections ORDER BY connection_id").all(),
-          env.DB.prepare("SELECT MAX(version) AS version FROM gs_l1_policy").first()
+          env.ORG_DB.prepare("SELECT manager_level, status, COUNT(*) AS count FROM gs_org_units GROUP BY manager_level, status ORDER BY manager_level, status").all(),
+          env.ORG_DB.prepare("SELECT level, status, COUNT(*) AS count FROM gs_org_agents GROUP BY level, status ORDER BY level, status").all(),
+          env.ORG_DB.prepare("SELECT status, COUNT(*) AS count FROM gs_org_tasks GROUP BY status ORDER BY status").all(),
+          env.ORG_DB.prepare("SELECT connection_id, status, last_verified_at FROM gs_org_connections ORDER BY connection_id").all(),
+          env.ORG_DB.prepare("SELECT MAX(version) AS version FROM gs_l1_policy").first()
         ]);
         data = {
           status: "ok",
@@ -238,26 +241,26 @@ async function handlePocketPalGateway(request, env) {
           policyVersion: results[4] ? results[4].version : null
         };
       } else if (operation === "agents.list") {
-        const result = await env.DB.prepare(
+        const result = await env.ORG_DB.prepare(
           "SELECT a.agent_id, a.unit_id, a.level, a.agent_name, a.role, a.reports_to, a.status, u.unit_name FROM gs_org_agents a LEFT JOIN gs_org_units u ON u.unit_id = a.unit_id ORDER BY a.level, a.unit_id, a.agent_id LIMIT ?"
         ).bind(limit).all();
         data = { items: result.results || [], returned: (result.results || []).length };
       } else if (operation === "tasks.list") {
-        const result = await env.DB.prepare(
+        const result = await env.ORG_DB.prepare(
           "SELECT task_id, parent_task_id, unit_id, assigned_agent_id, created_by, title, objective, status, priority, risk_level, approval_status, created_at, updated_at FROM gs_org_tasks ORDER BY updated_at DESC LIMIT ?"
         ).bind(limit).all();
         data = { items: result.results || [], returned: (result.results || []).length };
       } else if (operation === "access.policy.get") {
         const results = await Promise.all([
-          env.DB.prepare("SELECT policy_id, subject_level, scope, allowed_actions_json, denied_actions_json, approval_required_json, version, status FROM gs_org_access_policies WHERE status='active' ORDER BY subject_level").all(),
-          env.DB.prepare("SELECT MAX(version) AS version FROM gs_l1_policy").first()
+          env.ORG_DB.prepare("SELECT policy_id, subject_level, scope, allowed_actions_json, denied_actions_json, approval_required_json, version, status FROM gs_org_access_policies WHERE status='active' ORDER BY subject_level").all(),
+          env.ORG_DB.prepare("SELECT MAX(version) AS version FROM gs_l1_policy").first()
         ]);
         data = {
           policies: results[0].results || [],
           l1PolicyVersion: results[1] ? results[1].version : null
         };
       } else if (operation === "connections.list") {
-        const result = await env.DB.prepare(
+        const result = await env.ORG_DB.prepare(
           "SELECT connection_id, source_unit_id, target_unit_id, protocol, authentication_mode, status, last_verified_at FROM gs_org_connections ORDER BY connection_id"
         ).all();
         data = { items: result.results || [], returned: (result.results || []).length };
