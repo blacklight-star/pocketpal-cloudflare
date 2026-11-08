@@ -445,11 +445,11 @@ jobs:
           name: android-release-apk
           path: android/app/build/outputs/apk/prod/release/app-prod-release.apk
 
-  # Job for iOS build
+  # Build the iOS device app on main and on the PocketPal gateway PR so an unsigned sideload IPA is available for owner testing.
   build-ios:
     runs-on: macos-26  # Keep CI on the same Xcode major as the release workflow
     needs: [detect-changes]
-    if: github.event_name == 'push' && github.ref_name == 'main' && needs.detect-changes.outputs.translation_only != 'true'
+    if: (github.event_name == 'push' && github.ref_name == 'main' || github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'hardening/pocketpal-gateway-v1') && needs.detect-changes.outputs.translation_only != 'true'
     env:
       NODE_OPTIONS: '--max-old-space-size=8192'
     steps:
