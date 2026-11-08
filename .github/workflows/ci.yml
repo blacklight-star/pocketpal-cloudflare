@@ -120,8 +120,8 @@ jobs:
         if: ${{ always() && steps.install-dependencies.outcome == 'success' }}
         run: |
           set -euo pipefail
-          # Candidate V81 is the current isolated preview; Production L1 v56 remains untouched.
-          URL="https://adab35f2-personal-ai-manager.goldstar-al-manager.workers.dev"
+          # Candidate V82 is the current isolated preview; Production L1 v56 remains untouched.
+          URL="https://a129a762-personal-ai-manager.goldstar-al-manager.workers.dev"
           BODY='{"manager":"level1","operation":"status","args":{}}'
           RESPONSE="$(mktemp)"
           check_status() {
