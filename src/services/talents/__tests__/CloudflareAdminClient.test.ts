@@ -11,9 +11,9 @@ const credentialStore = {
 };
 
 describe('CloudflareAdminClient', () => {
-  it('defaults to the pinned isolated L1 preview v78', () => {
+  it('defaults to the pinned isolated L1 preview v80', () => {
     expect(CLOUDFLARE_ADMIN_ENDPOINT).toBe(
-      'https://a0a94890-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute',
+      'https://53599018-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute',
     );
   });
 
