@@ -1,16 +1,16 @@
 # PocketPal manager gateway API contract (v1)
 
-This is the contract implemented by the app-side `cloudflare_admin` Talent and uploaded to L1 as preview-only Candidate V78. It is a read-only API. The active L1 Production deployment remains V56 and does not expose the PocketPal credential binding; do not use the Production hostname. The app client is intentionally restricted to the immutable V78 preview endpoint until a separately approved production rollout.
+This is the contract implemented by the app-side `cloudflare_admin` Talent and uploaded to L1 as preview-only Candidate V80. It is a read-only API. The active L1 Production deployment remains V56 and does not expose the PocketPal credential binding; do not use the Production hostname. The app client is intentionally restricted to the immutable V80 preview endpoint until a separately approved production rollout.
 
 ## Endpoint and authentication
 
 - Method: `POST`
 - Path: `/pocketpal/v1/execute`
-- Current app endpoint: `https://a0a94890-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute` (immutable L1 Candidate V78 preview)
+- Current app endpoint: `https://53599018-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute` (immutable L1 Candidate V80 preview)
 - Authentication: `Authorization: Bearer <POCKETPAL_APP_KEY>`
-- `POCKETPAL_APP_KEY` is a dedicated app-to-gateway Worker secret, separate from `GOLDSTAR_FINANCIAL_BRIDGE_KEY` and `GOLDSTAR_API_KEY`. Its secret binding is present on Candidate V78 only; it is not bound to active Production V56. The value is never stored in GitHub or chat.
+- `POCKETPAL_APP_KEY` is a dedicated app-to-gateway Worker secret, separate from `GOLDSTAR_FINANCIAL_BRIDGE_KEY` and `GOLDSTAR_API_KEY`. Its secret binding is present on Candidate V80 only; it is not bound to active Production V56. The value is never stored in GitHub or chat.
 - The app stores only the app credential in iOS Keychain. The L1↔L2 bridge credential stays in Cloudflare Worker secrets.
-- Candidate V78's `DB` binding is isolated for audit/rate limiting. A separate `ORG_DB` binding to the real L1 registry is required before valid L1 data reads can succeed; this binding is not present yet.
+- Candidate V80's `DB` binding is isolated for audit/rate limiting. `ORG_DB` is bound to the separate `ai_manager_org_staging` D1 snapshot; it contains 6 units, 45 agents, 12 tasks, 8 connections, 4 access policies, and 2 L1 policy records, each exactly matching the corresponding Production source table. The gateway reads this snapshot using fixed SELECT statements; it does not bind the Production registry database.
 - Reject missing, malformed, or invalid credentials with HTTP 401. Never echo credentials in errors or logs.
 
 ## Request schema
@@ -29,7 +29,7 @@ The gateway must reject unknown properties, unknown operations, invalid manager/
 
 ## Allowlist
 
-The live GOLDSTAR organizational registry is in the L1 Production D1 database. Candidate V78's `DB` binding points to an isolated PocketPal control database (audit and rate-limit tables only), which contains no organization records. Therefore the gateway must use a separate `ORG_DB` binding for reads from `gs_org_units`, `gs_org_agents`, `gs_org_tasks`, `gs_org_access_policies`, and `gs_org_connections`. Until `ORG_DB` is explicitly bound to the L1 registry database, every L1 data operation must fail closed with HTTP 503 rather than returning misleading empty results. Keep `DB` dedicated to PocketPal audit and rate limiting.
+The source GOLDSTAR registry remains in L1 Production D1. Candidate V80 reads only an isolated, row-for-row verified snapshot through `ORG_DB`; `DB` remains dedicated to audit and rate limiting. The app omits task input/output/error payloads and does not expose credentials.
 
 | Manager | Operation | Arguments | Expected behavior |
 |---|---|---|---|
@@ -81,7 +81,7 @@ Use appropriate HTTP status codes: 400 invalid schema/arguments, 401 invalid app
 1. Resolve `level1` and `level2` to fixed server-side handlers. Never trust account IDs supplied by the model.
 2. The L2 handler must call the existing L1→L2 bridge function; do not send bridge secrets to the client.
 3. Expose only the read operations listed above in v1. Do not add deploy, edit, delete, secret-management, DNS, access-policy, training-batch, approve, or strategy-write operations.
-4. Require HTTPS, enforce an 8 KiB streaming body limit, reject non-JSON requests, and apply an atomic 30 requests/minute app-credential limit using D1 `INSERT ... ON CONFLICT ... RETURNING`. The migration `backend/migrations/0001_pocketpal_rate_limits.sql` is applied only to the isolated preview D1 database used by Candidate V78. It has not been applied to Production D1. Do not fall back to KV if the D1 table is missing or unavailable; return 503.
+4. Require HTTPS, enforce an 8 KiB streaming body limit, reject non-JSON requests, and apply an atomic 30 requests/minute app-credential limit using D1 `INSERT ... ON CONFLICT ... RETURNING`. The migration `backend/migrations/0001_pocketpal_rate_limits.sql` is applied only to the isolated PocketPal control D1 database used by Candidate V80. It has not been applied to Production D1. Do not fall back to KV if the D1 table is missing or unavailable; return 503.
 5. Generate a request ID and record a bounded audit entry containing timestamp, manager, operation, result status, and request ID. Never log request authorization headers or secret values. Audit persistence is fail-closed: if the audit insert fails, do not return manager data; return 503.
 6. Return bounded payloads. The app rejects responses larger than 30,000 characters and limits model-visible summaries to 10,000 characters.
 7. Add tests for manager isolation, operation allowlist, argument validation, SQL parameterization, authentication, rate limiting, redaction, and upstream errors.
@@ -90,10 +90,10 @@ Use appropriate HTTP status codes: 400 invalid schema/arguments, 401 invalid app
 
 ## Current deployment boundary — 2026-11-07
 
-- Candidate V78 is preview-only; active L1 Production remains V56 at 100% traffic.
+- Candidate V80 is preview-only; active L1 Production remains V56 at 100% traffic.
 - The versioned preview host exposes only `/pocketpal/v1/execute` and `/pocketpal/v1/enroll`; non-PocketPal paths are rejected before the normal L1 router.
-- Candidate V78 uses the isolated preview D1 migration, atomic D1 rate limiting, and fail-closed audit persistence. Production D1 and Production Worker bindings were not changed.
-- The app client is pinned to V78 and rejects a Production endpoint override while this rollout is preview-only.
+- Candidate V80 uses the isolated preview D1 migration, atomic D1 rate limiting, and fail-closed audit persistence. Production D1 and Production Worker bindings were not changed.
+- The app client is pinned to V80 and rejects a Production endpoint override while this rollout is preview-only.
 - CI live smoke coverage checks unauthenticated execution (HTTP 401) and rejects non-gateway/approval/trade paths (HTTP 404). It does not prove a valid-key response or full L1-to-L2 operation.
 - The enrollment record currently present in preview is expired. Use the manual Keychain credential path only after the owner has the current app key; never send the key through chat.
 - PocketPal's v1 operation allowlist remains read-only. Approval, batch ingestion, strategy synthesis, market analysis, deployment, secret changes, and trade execution are not available through this API.
