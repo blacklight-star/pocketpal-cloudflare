@@ -30,7 +30,11 @@ export type CloudflareManagerOperation =
   | 'financial.pending'
   | 'financial.strategy.get'
   | 'financial.progress'
-  | 'financial.sources.list';
+  | 'financial.sources.list'
+  | 'financial.mt5.status'
+  | 'financial.mt5.latest'
+  | 'financial.mql5.tools'
+  | 'financial.mql5.call';
 
 export interface CloudflareAdminCredentialStore {
   readonly isKeyLoaded: boolean;
