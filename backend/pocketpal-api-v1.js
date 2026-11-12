@@ -1,9 +1,9 @@
-/* global TextEncoder, TextDecoder, Response, crypto, sha256Hex, callFinancial */
+/* global TextEncoder, TextDecoder, Response, crypto, sha256Hex, callFinancial, callFinancialPreview */
 /* eslint-disable prettier/prettier */
 /*
  * GOLDSTAR L1 PocketPal Gateway API v1
  * Insert this module into personal-ai-manager after callFinancial().
- * Dependencies provided by the L1 Worker: env.DB, callFinancial(), sha256Hex().
+ * Dependencies provided by the L1 Worker: env.DB, callFinancial(), callFinancialPreview(), sha256Hex().
  * Read-only manager operations only. This module never exposes Cloudflare secrets.
  */
 
@@ -181,7 +181,8 @@ async function handlePocketPalGateway(request, env) {
   ]);
   const level2Ops = new Set([
     "health", "financial.status", "financial.pending", "financial.progress",
-    "financial.strategy.get", "financial.sources.list"
+    "financial.strategy.get", "financial.sources.list",
+    "financial.mt5.status", "financial.mt5.latest", "financial.mql5.tools", "financial.mql5.call"
   ]);
   if (!(manager === "level1" ? level1Ops : level2Ops).has(operation)) {
     return pocketpalResponse(403, { ok: false, error: "Operation is not available for this manager." }, requestId);
@@ -192,9 +193,14 @@ async function handlePocketPalGateway(request, env) {
     return pocketpalResponse(400, { ok: false, error: "args must be an object." }, requestId);
   }
   const limitOps = ["agents.list", "tasks.list", "financial.pending"];
-  const allowedArgs = limitOps.includes(operation) ? ["limit"] : [];
+  const isMql5Call = operation === "financial.mql5.call";
+  const allowedArgs = isMql5Call ? ["name", "arguments"] : (limitOps.includes(operation) ? ["limit"] : []);
   if (Object.keys(args).some(key => !allowedArgs.includes(key))) {
     return pocketpalResponse(400, { ok: false, error: "Unsupported operation arguments." }, requestId);
+  }
+  if (isMql5Call && (typeof args.name !== "string" || !/^marketdata_[a-zA-Z0-9_]+$/.test(args.name) ||
+      (args.arguments !== undefined && !pocketpalIsRecord(args.arguments)))) {
+    return pocketpalResponse(400, { ok: false, error: "Only marketdata_* tool calls with object arguments are permitted." }, requestId);
   }
   let limit = 5;
   if (limitOps.includes(operation)) {
@@ -266,15 +272,29 @@ async function handlePocketPalGateway(request, env) {
         data = { items: result.results || [], returned: (result.results || []).length };
       }
     } else {
-      const paths = {
-        health: "/health",
-        "financial.status": "/status",
-        "financial.pending": "/training/pending?limit=" + limit,
-        "financial.progress": "/training/progress",
-        "financial.strategy.get": "/strategy",
-        "financial.sources.list": "/training/sources"
+      const previewPaths = {
+        "financial.mt5.status": "/mt5/status",
+        "financial.mt5.latest": "/mt5/latest",
+        "financial.mql5.tools": "/mql5/tools",
+        "financial.mql5.call": "/mql5/call"
       };
-      const upstream = await callFinancial(paths[operation], env, "GET");
+      let upstream;
+      if (previewPaths[operation]) {
+        if (typeof callFinancialPreview !== "function") throw new Error("MQL5 preview bridge is unavailable.");
+        const previewMethod = operation.startsWith("financial.mql5.") ? "POST" : "GET";
+        const previewBody = isMql5Call ? {name: args.name, arguments: args.arguments || {}} : {};
+        upstream = await callFinancialPreview(previewPaths[operation], env, previewMethod, previewBody);
+      } else {
+        const paths = {
+          health: "/health",
+          "financial.status": "/status",
+          "financial.pending": "/training/pending?limit=" + limit,
+          "financial.progress": "/training/progress",
+          "financial.strategy.get": "/strategy",
+          "financial.sources.list": "/training/sources"
+        };
+        upstream = await callFinancial(paths[operation], env, "GET");
+      }
       if (upstream && upstream.error) {
         return await pocketpalAuditedResponse(
           env, requestId, manager, operation, 502,
