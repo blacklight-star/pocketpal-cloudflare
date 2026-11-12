@@ -120,8 +120,10 @@ jobs:
         if: ${{ always() && steps.install-dependencies.outcome == 'success' }}
         run: |
           set -euo pipefail
-          # Candidate V82 is the current isolated preview; Production L1 v56 remains untouched.
+          # Candidate V82 is the app's isolated preview target. The active L1 stable
+          # Worker is currently V102; probe only its unauthenticated boundary below.
           URL="https://a129a762-personal-ai-manager.goldstar-al-manager.workers.dev"
+          PRODUCTION_URL="https://personal-ai-manager.goldstar-al-manager.workers.dev"
           BODY='{"manager":"level1","operation":"status","args":{}}'
           RESPONSE="$(mktemp)"
           check_status() {
@@ -151,6 +153,12 @@ jobs:
             cat "$RESPONSE"
             exit 1
           fi
+          # Active L1 production boundary: missing credentials must fail before any
+          # organization data or rate-limit state is accessed. No valid key/data sent.
+          check_status 401 --request POST --header 'Content-Type: application/json' \
+            --data "$BODY" "$PRODUCTION_URL/pocketpal/v1/execute"
+          check_status 404 "$PRODUCTION_URL/pocketpal/v1/approve"
+
           check_status 404 "$URL/"
           check_status 404 "$URL/pocketpal/v1/approve"
           check_status 404 "$URL/pocketpal/v1/trade"
