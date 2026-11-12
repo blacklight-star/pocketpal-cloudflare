@@ -6,7 +6,7 @@ This is the contract implemented by the app-side `cloudflare_admin` Talent and u
 
 - Method: `POST`
 - Path: `/pocketpal/v1/execute`
-- Current app endpoint: `https://a129a762-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute` (immutable L1 Candidate V106 preview)
+- Current app endpoint: `https://3deac18c-personal-ai-manager.goldstar-al-manager.workers.dev/pocketpal/v1/execute` (immutable L1 Candidate V106 preview)
 - Authentication: `Authorization: Bearer <POCKETPAL_APP_KEY>`
 - `POCKETPAL_APP_KEY` is a dedicated app-to-gateway Worker secret, separate from `GOLDSTAR_FINANCIAL_BRIDGE_KEY` and `GOLDSTAR_API_KEY`. Its dedicated secret binding is inherited by both active stable V102 and preview V106; the secret value is never read or exposed. The value is never stored in GitHub or chat.
 - The app stores only the app credential in iOS Keychain. The L1↔L2 bridge credential stays in Cloudflare Worker secrets.
@@ -29,7 +29,7 @@ The gateway must reject unknown properties, unknown operations, invalid manager/
 
 ## Allowlist
 
-The source GOLDSTAR registry remains in L1 Production D1. Candidate V106 reads only an isolated, row-for-row verified snapshot through `ORG_DB`; `DB` remains dedicated to audit and rate limiting. The app omits task input/output/error payloads and does not expose credentials.
+The active stable L1 V102 and preview V106 both bind `ORG_DB` to the isolated `ai_manager_org_staging` snapshot. The PocketPal gateway reads only this snapshot through fixed SELECT statements. Audit writes use `DB → ai-manager-db`; rate limits and one-time enrollment use `POCKETPAL_DB → pocketpal_gateway_preview`. The app omits task input/output/error payloads and does not expose credentials.
 
 | Manager | Operation | Arguments | Expected behavior |
 |---|---|---|---|
@@ -85,13 +85,13 @@ Use appropriate HTTP status codes: 400 invalid schema/arguments, 401 invalid app
 5. Generate a request ID and record a bounded audit entry containing timestamp, manager, operation, result status, and request ID. Never log request authorization headers or secret values. Audit persistence is fail-closed: if the audit insert fails, do not return manager data; return 503.
 6. Return bounded payloads. The app rejects responses larger than 30,000 characters and limits model-visible summaries to 10,000 characters.
 7. Add tests for manager isolation, operation allowlist, argument validation, SQL parameterization, authentication, rate limiting, redaction, and upstream errors.
-8. Run the isolated gateway tests with `node --test backend/test-pocketpal-api-v1.mjs`; CI runs this suite on pull requests. Keep the route preview-only until a valid-key request, every allowed read operation, audit/rate-limit behavior, and a real-device app test pass. Do not apply the migration to Production or replace active V56 merely because a newer source upload exists.
+8. Run the isolated gateway tests with `node --test backend/test-pocketpal-api-v1.mjs`; CI runs this suite on pull requests. Keep the route preview-only until a valid-key request, every allowed read operation, audit/rate-limit behavior, and a real-device app test pass. Do not apply the PocketPal control-table migration to the core `ai-manager-db` or change existing bindings merely because a newer source upload exists.
 
 
 ## Current deployment boundary — 2026-11-08
 
-- Candidate V106 is preview-only; active L1 Production remains V56 at 100% traffic.
-- The versioned preview host exposes only `/pocketpal/v1/execute` and `/pocketpal/v1/enroll`; non-PocketPal paths are rejected before the normal L1 router.
+- Candidate V106 is preview-only; active stable L1 is V102 at 100% traffic until the V106 preview passes and the narrow route correction is deployed.
+- The versioned preview host exposes only `/pocketpal/v1/execute` and `/pocketpal/v1/enroll`; non-PocketPal paths are rejected before the normal L1 router. V106 additionally adds only the `/pocketpal/v1/execute` dispatch on the stable host; it does not broaden preview diagnostics or enrollment routes.
 - Candidate V106 uses the isolated preview D1 migration, atomic D1 rate limiting, and fail-closed audit persistence. Production D1 and Production Worker bindings were not changed.
 - The app client is pinned to V106 and rejects a Production endpoint override while this rollout is preview-only.
 - CI live smoke coverage checks unauthenticated execution (HTTP 401) and rejects non-gateway/approval/trade paths (HTTP 404). It does not prove a valid-key response or full L1-to-L2 operation.
