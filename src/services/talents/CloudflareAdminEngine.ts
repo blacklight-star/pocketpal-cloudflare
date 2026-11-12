@@ -248,6 +248,26 @@ export class CloudflareAdminEngine implements TalentEngine {
               properties: {
                 limit: {type: 'integer', minimum: 1, maximum: 10},
                 name: {type: 'string', pattern: '^marketdata_[a-zA-Z0-9_]+
+          },
+          required: ['manager', 'operation'],
+        },
+      },
+    };
+  }
+}
+},
+                arguments: {type: 'object', additionalProperties: true},
+              },
+            },
+          },
+          required: ['manager', 'operation'],
+        },
+      },
+    };
+  }
+}
+},
+                arguments: {type: 'object', additionalProperties: true},
             },
           },
           required: ['manager', 'operation'],
