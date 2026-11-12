@@ -54,6 +54,53 @@ describe('CloudflareAdminEngine', () => {
     );
   });
 
+  it('routes MQL5 tool discovery to level2', async () => {
+    await engine.execute({
+      manager: 'level2',
+      operation: 'financial.mql5.tools',
+    });
+    expect(execute).toHaveBeenCalledWith(
+      'level2',
+      'financial.mql5.tools',
+      {},
+      undefined,
+    );
+  });
+
+  it('routes only marketdata_* MQL5 calls with object arguments', async () => {
+    await engine.execute({
+      manager: 'level2',
+      operation: 'financial.mql5.call',
+      args: {name: 'marketdata_get_symbol_info', arguments: {symbol: 'EURUSD'}},
+    });
+    expect(execute).toHaveBeenCalledWith(
+      'level2',
+      'financial.mql5.call',
+      {name: 'marketdata_get_symbol_info', arguments: {symbol: 'EURUSD'}},
+      undefined,
+    );
+  });
+
+  it('rejects order-like or arbitrary MQL5 tool names', async () => {
+    const result = await engine.execute({
+      manager: 'level2',
+      operation: 'financial.mql5.call',
+      args: {name: 'trade_place_order', arguments: {symbol: 'EURUSD'}},
+    });
+    expect(execute).not.toHaveBeenCalled();
+    expect(result.type).toBe('error');
+  });
+
+  it('rejects non-object MQL5 tool arguments', async () => {
+    const result = await engine.execute({
+      manager: 'level2',
+      operation: 'financial.mql5.call',
+      args: {name: 'marketdata_get_symbol_info', arguments: ['EURUSD']},
+    });
+    expect(execute).not.toHaveBeenCalled();
+    expect(result.type).toBe('error');
+  });
+
   it('rejects a level2-only operation on level1', async () => {
     const result = await engine.execute({
       manager: 'level1',
@@ -95,7 +142,6 @@ describe('CloudflareAdminEngine', () => {
     expect(execute).not.toHaveBeenCalled();
     expect(result.type).toBe('error');
   });
-
 
   it('forwards cancellation signal to the gateway client', async () => {
     const controller = new AbortController();

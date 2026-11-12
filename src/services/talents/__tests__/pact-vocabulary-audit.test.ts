@@ -1,11 +1,12 @@
 /**
- * PACT Vocabulary Audit Tests (TASK-20260415-1200)
+ * Talent service contract and registry tests.
  *
  * These tests verify that:
- * 1. Old "tool" vocabulary is fully replaced in our PACT layer
- * 2. Wire format names (tool_calls, tool_choice, etc.) are preserved
- * 3. TalentResult type union covers expected variants
- * 4. TalentRef type has expected shape
+ * 1. Core TalentEngine implementations satisfy the engine contract
+ * 2. TalentResult variants returned by the tested engines have the expected shape
+ * 3. Default registration includes every built-in talent
+ * 4. Registry instances remain isolated
+ * 5. Derived OpenAI tool schemas match the registered talent set
  */
 import {TalentRegistry, talentRegistry} from '../TalentRegistry';
 import {
@@ -83,19 +84,20 @@ describe('PACT vocabulary audit', () => {
     });
   });
 
-  describe('registerDefaultTalents populates all three engines', () => {
+  describe('registerDefaultTalents registers all six built-in talents', () => {
     beforeEach(() => {
       talentRegistry.reset();
       resetRegisteredFlag();
     });
 
-    it('registers render_html, calculate, datetime, web_search, read_url', () => {
+    it('registers all six built-in talents', () => {
       registerDefaultTalents();
       expect(talentRegistry.has('render_html')).toBe(true);
       expect(talentRegistry.has('calculate')).toBe(true);
       expect(talentRegistry.has('datetime')).toBe(true);
       expect(talentRegistry.has('web_search')).toBe(true);
       expect(talentRegistry.has('read_url')).toBe(true);
+      expect(talentRegistry.has('cloudflare_admin')).toBe(true);
     });
 
     it('engines retrieved by name are executable', async () => {
@@ -126,21 +128,22 @@ describe('PACT vocabulary audit', () => {
 
     it('returns ToolDefinition array for all registered engines', () => {
       const schemas = deriveToolSchemas();
-      expect(schemas).toHaveLength(5);
+      expect(schemas).toHaveLength(6);
       const names = schemas.map(s => s.function.name);
       expect(names).toContain('render_html');
       expect(names).toContain('calculate');
       expect(names).toContain('datetime');
       expect(names).toContain('web_search');
       expect(names).toContain('read_url');
+      expect(names).toContain('cloudflare_admin');
     });
 
     it('works without prior registerDefaultTalents call', () => {
       // Registry is reset in beforeEach — deriveToolSchemas calls
-      // registerDefaultTalents internally.
+      // registerDefaultTalents internally and registers all six built-in talents.
       expect(talentRegistry.has('render_html')).toBe(false);
       const schemas = deriveToolSchemas();
-      expect(schemas).toHaveLength(5);
+      expect(schemas).toHaveLength(6);
       expect(talentRegistry.has('render_html')).toBe(true);
     });
   });
