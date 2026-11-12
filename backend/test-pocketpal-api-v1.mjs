@@ -174,7 +174,7 @@ test('MQL5 tool discovery uses the fixed read-only preview route', async () => {
   const {handle, env, calls} = loadHandler({financialResponse: {tools: [{name: 'marketdata_get_symbol_info'}]}});
   const response = await handle(makeRequest(JSON.stringify({manager: 'level2', operation: 'financial.mql5.tools'})), env);
   assert.equal(response.status, 200);
-  assert.deepEqual(calls.financialPreview, [{path: '/mql5/tools', method: 'POST', body: {}}]);
+  assert.equal(JSON.stringify(calls.financialPreview), JSON.stringify([{path: '/mql5/tools', method: 'POST', body: {}}]));
 });
 
 test('MQL5 tool calls accept only marketdata_* names and object arguments', async () => {
@@ -185,11 +185,11 @@ test('MQL5 tool calls accept only marketdata_* names and object arguments', asyn
     args: {name: 'marketdata_get_symbol_info', arguments: {symbol: 'EURUSD'}}
   })), env);
   assert.equal(response.status, 200);
-  assert.deepEqual(calls.financialPreview, [{
+  assert.equal(JSON.stringify(calls.financialPreview), JSON.stringify([{
     path: '/mql5/call',
     method: 'POST',
     body: {name: 'marketdata_get_symbol_info', arguments: {symbol: 'EURUSD'}}
-  }]);
+  }]));
 });
 
 test('MQL5 gateway rejects order tools before any upstream call', async () => {
