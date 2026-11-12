@@ -8,7 +8,7 @@ import {webcrypto} from 'node:crypto';
 const source = await readFile(new URL('./pocketpal-api-v1.js', import.meta.url), 'utf8');
 
 function loadHandler({auditFails = false, rateAllowed = true, withOrgDb = true, financialResponse = {ok: true}} = {}) {
-  const calls = {audit: 0, rate: 0, financial: []};
+  const calls = {audit: 0, rate: 0, financial: [], financialPreview: []};
   const env = {
     POCKETPAL_APP_KEY: 'a'.repeat(48),
     ORG_DB: withOrgDb ? {
@@ -84,6 +84,10 @@ function loadHandler({auditFails = false, rateAllowed = true, withOrgDb = true, 
     sha256Hex: async value => 'sha256:' + String(value).length,
     callFinancial: async (path, _env, method) => {
       calls.financial.push({path, method});
+      return financialResponse;
+    },
+    callFinancialPreview: async (path, _env, method, body) => {
+      calls.financialPreview.push({path, method, body});
       return financialResponse;
     },
   };
@@ -164,6 +168,49 @@ test('L2 route is fixed to an allowlisted read-only path', async () => {
   assert.equal(calls.financial.length, 1);
   assert.equal(calls.financial[0].path, '/status');
   assert.equal(calls.financial[0].method, 'GET');
+});
+
+test('MQL5 tool discovery uses the fixed read-only preview route', async () => {
+  const {handle, env, calls} = loadHandler({financialResponse: {tools: [{name: 'marketdata_get_symbol_info'}]}});
+  const response = await handle(makeRequest(JSON.stringify({manager: 'level2', operation: 'financial.mql5.tools'})), env);
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls.financialPreview, [{path: '/mql5/tools', method: 'POST', body: {}}]);
+});
+
+test('MQL5 tool calls accept only marketdata_* names and object arguments', async () => {
+  const {handle, env, calls} = loadHandler({financialResponse: {result: {symbol: 'EURUSD'}}});
+  const response = await handle(makeRequest(JSON.stringify({
+    manager: 'level2',
+    operation: 'financial.mql5.call',
+    args: {name: 'marketdata_get_symbol_info', arguments: {symbol: 'EURUSD'}}
+  })), env);
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls.financialPreview, [{
+    path: '/mql5/call',
+    method: 'POST',
+    body: {name: 'marketdata_get_symbol_info', arguments: {symbol: 'EURUSD'}}
+  }]);
+});
+
+test('MQL5 gateway rejects order tools before any upstream call', async () => {
+  const {handle, env, calls} = loadHandler();
+  const response = await handle(makeRequest(JSON.stringify({
+    manager: 'level2',
+    operation: 'financial.mql5.call',
+    args: {name: 'trade_place_order', arguments: {symbol: 'EURUSD'}}
+  })), env);
+  assert.equal(response.status, 400);
+  assert.equal(calls.financialPreview.length, 0);
+});
+
+test('MT5 status and latest snapshots use fixed read-only paths', async () => {
+  const {handle, env, calls} = loadHandler({financialResponse: {mode: 'demo_read_only'}});
+  for (const [operation, path] of [['financial.mt5.status', '/mt5/status'], ['financial.mt5.latest', '/mt5/latest']]) {
+    const response = await handle(makeRequest(JSON.stringify({manager: 'level2', operation})), env);
+    assert.equal(response.status, 200);
+    assert.equal(calls.financialPreview.at(-1).path, path);
+    assert.equal(calls.financialPreview.at(-1).method, 'GET');
+  }
 });
 
 test('pinned versioned preview hostname is accepted', async () => {
