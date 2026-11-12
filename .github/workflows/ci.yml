@@ -120,10 +120,9 @@ jobs:
         if: ${{ always() && steps.install-dependencies.outcome == 'success' }}
         run: |
           set -euo pipefail
-          # Candidate V82 is the app's isolated preview target. The active L1 stable
-          # Worker is currently V102; probe only its unauthenticated boundary below.
-          URL="https://a129a762-personal-ai-manager.goldstar-al-manager.workers.dev"
-          PRODUCTION_URL="https://personal-ai-manager.goldstar-al-manager.workers.dev"
+          # Candidate V106 contains the narrowly scoped stable-host route correction.
+          # Test its versioned preview before deploying it to the stable L1 hostname.
+          URL="https://3deac18c-personal-ai-manager.goldstar-al-manager.workers.dev"
           BODY='{"manager":"level1","operation":"status","args":{}}'
           RESPONSE="$(mktemp)"
           check_status() {
