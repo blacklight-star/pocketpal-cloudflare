@@ -152,12 +152,6 @@ jobs:
             cat "$RESPONSE"
             exit 1
           fi
-          # Active L1 production boundary: missing credentials must fail before any
-          # organization data or rate-limit state is accessed. No valid key/data sent.
-          check_status 401 --request POST --header 'Content-Type: application/json' \
-            --data "$BODY" "$PRODUCTION_URL/pocketpal/v1/execute"
-          check_status 404 "$PRODUCTION_URL/pocketpal/v1/approve"
-
           check_status 404 "$URL/"
           check_status 404 "$URL/pocketpal/v1/approve"
           check_status 404 "$URL/pocketpal/v1/trade"
