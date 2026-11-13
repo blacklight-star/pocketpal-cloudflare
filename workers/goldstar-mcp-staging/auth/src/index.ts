@@ -2,7 +2,9 @@ import {
   AuthorizationError,
   OAuthAuthorizationServer,
   authorizationErrorRedirect,
-undefined} from "@cloudflare/workers-oauth-provider";
+  type AuthRequest,
+  type ConsentDescription,
+} from "@cloudflare/workers-oauth-provider";
 import { WorkerEntrypoint } from "cloudflare:workers";
 
 interface Env {
