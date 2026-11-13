@@ -323,7 +323,7 @@ async function postAuthorize(request: Request, env: Env): Promise<Response> {
 
 async function googleCallback(request: Request, env: Env): Promise<Response> {
   const oauth = authorizationServer.getOAuthApi(env);
-  let originalRequest: Awaited<ReturnType<typeof oauth.finishUpstream>>["request"];
+  let originalRequest: AuthRequest;
   let upstreamState: UpstreamState;
   let clearHeaders: Headers;
 
