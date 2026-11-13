@@ -412,7 +412,7 @@ function createServer() {
         inputSchema: z.object({
           operationName: z
             .string()
-            .regex(/^operations\\/[A-Za-z0-9_-]+$/)
+            .regex(/^operations\/[A-Za-z0-9_-]+$/)
             .max(256),
         }),
       },
