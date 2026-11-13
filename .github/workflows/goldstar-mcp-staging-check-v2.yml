@@ -1,4 +1,4 @@
-name: Goldstar MCP Staging CI
+name: Goldstar MCP Staging CI (retrigger)
 
 on:
   push:
