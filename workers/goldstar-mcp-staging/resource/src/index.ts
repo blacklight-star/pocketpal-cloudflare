@@ -345,7 +345,7 @@ function createServer() {
           const accessToken = await getGoogleCloudAccessToken(bindings);
           const project = await googleCloudRequest(
             "https://cloudresourcemanager.googleapis.com/v3/projects/" +
-              encodeURIComponent(bindings.GCP_PROJECT_ID),
+              encodeURIComponent(bindings.GCP_PROJECT_NUMBER),
             accessToken,
           );
           console.info(
@@ -377,7 +377,7 @@ function createServer() {
           const accessToken = await getGoogleCloudAccessToken(bindings);
           const url = new URL(
             "https://serviceusage.googleapis.com/v1/projects/" +
-              encodeURIComponent(bindings.GCP_PROJECT_ID) +
+              encodeURIComponent(bindings.GCP_PROJECT_NUMBER) +
               "/services",
           );
           url.searchParams.set("filter", "state:ENABLED");
@@ -470,7 +470,7 @@ function createServer() {
           const accessToken = await getGoogleCloudAccessToken(bindings);
           const result = await googleCloudRequest(
             "https://serviceusage.googleapis.com/v1/projects/" +
-              encodeURIComponent(bindings.GCP_PROJECT_ID) +
+              encodeURIComponent(bindings.GCP_PROJECT_NUMBER) +
               "/services/" +
               encodeURIComponent(serviceId) +
               ":enable",
