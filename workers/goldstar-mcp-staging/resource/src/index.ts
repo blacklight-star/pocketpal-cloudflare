@@ -92,9 +92,21 @@ function getPublicJwk(env: Env): JsonWebKey {
   };
 }
 
+function oidcUnavailable(message: string): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status: 503,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Retry-After": "60",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
 function oidcDiscovery(env: Env): Response {
   if (!env.GCP_OIDC_ISSUER || !env.GCP_OIDC_KEY_ID || !env.GCP_OIDC_PUBLIC_JWK) {
-    return jsonResponse({ error: "OIDC issuer is not configured." }, "no-store");
+    return oidcUnavailable("OIDC issuer is not configured.");
   }
   return jsonResponse(
     {
@@ -111,7 +123,7 @@ function oidcDiscovery(env: Env): Response {
 
 function oidcJwks(env: Env): Response {
   if (!env.GCP_OIDC_ISSUER || !env.GCP_OIDC_KEY_ID || !env.GCP_OIDC_PUBLIC_JWK) {
-    return jsonResponse({ error: "OIDC signing key is not configured." }, "no-store");
+    return oidcUnavailable("OIDC signing key is not configured.");
   }
   try {
     return jsonResponse(
@@ -119,7 +131,7 @@ function oidcJwks(env: Env): Response {
       "public, max-age=300",
     );
   } catch {
-    return jsonResponse({ error: "OIDC public key configuration is invalid." }, "no-store");
+    return oidcUnavailable("OIDC public key configuration is invalid.");
   }
 }
 
@@ -385,6 +397,41 @@ function createServer() {
     );
   }
 
+  if (isOwner && gcpConfigured && grantedScopes.has("gcp:read")) {
+    server.registerTool(
+      "gcp_operation_status",
+      {
+        description: "Read the status of a Google Service Usage long-running operation previously returned by gcp_enable_api. Project identity is fixed by this Worker.",
+        inputSchema: z.object({
+          operationName: z
+            .string()
+            .regex(/^operations\\/[A-Za-z0-9_-]+$/)
+            .max(256),
+        }),
+      },
+      async ({ operationName }) => {
+        try {
+          const accessToken = await getGoogleCloudAccessToken(bindings);
+          const result = await googleCloudRequest(
+            "https://serviceusage.googleapis.com/v1/" + operationName,
+            accessToken,
+          );
+          console.info(
+            JSON.stringify({
+              event: "goldstar_gcp_operation_status_read",
+              actor: props?.email,
+              projectId: bindings.GCP_PROJECT_ID,
+              at: new Date().toISOString(),
+            }),
+          );
+          return toolText(result);
+        } catch (error) {
+          return toolError(error);
+        }
+      },
+    );
+  }
+
   if (isOwner && gcpConfigured && grantedScopes.has("gcp:write")) {
     server.registerTool(
       "gcp_enable_api",
@@ -417,7 +464,6 @@ function createServer() {
               ":enable",
             accessToken,
             "POST",
-            {},
           );
           console.info(
             JSON.stringify({
