@@ -12,13 +12,10 @@ interface Env {
   AUTH_SERVER: AuthorizationServerBinding<GoldstarAuthProps>;
   MCP_RESOURCE: string;
   OAUTH_ISSUER: string;
+  GOOGLE_CLIENT_ID: string;
   GCP_PROJECT_ID: string;
   GCP_PROJECT_NUMBER: string;
   GCP_SERVICE_ACCOUNT_EMAIL: string;
-  GCP_OIDC_ISSUER: string;
-  GCP_OIDC_KEY_ID: string;
-  GCP_OIDC_PUBLIC_JWK: string;
-  GCP_OIDC_SIGNING_KEY: CryptoKey;
   GCP_WIF_AUDIENCE: string;
 }
 
@@ -28,6 +25,8 @@ interface GoldstarAuthProps {
   googleSub: string;
   role: "owner";
   grantedScopes: string[];
+  googleIdToken?: string;
+  googleIdTokenExpiresAt?: number;
 }
 
 interface GoogleStsResponse {
@@ -45,7 +44,6 @@ interface GoogleImpersonationResponse {
 const RESOURCE = "https://goldstar-mcp-resource-staging.goldstar-al-manager.workers.dev/mcp";
 const ISSUER = "https://goldstar-mcp-auth-staging.goldstar-al-manager.workers.dev";
 const GOOGLE_CLOUD_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
-const GCP_SUBJECT = "goldstar-mcp-resource-staging";
 const GCP_ENABLE_API_ALLOWLIST = new Set([
   "cloudresourcemanager.googleapis.com",
   "iam.googleapis.com",
@@ -57,14 +55,21 @@ const encoder = new TextEncoder();
 
 function isGcpFederationConfigured(env: Env): boolean {
   return Boolean(
-    env.GCP_PROJECT_ID &&
+    env.GOOGLE_CLIENT_ID &&
+      env.GCP_PROJECT_ID &&
       env.GCP_PROJECT_NUMBER &&
       env.GCP_SERVICE_ACCOUNT_EMAIL &&
-      env.GCP_WIF_AUDIENCE &&
-      env.GCP_OIDC_ISSUER &&
-      env.GCP_OIDC_KEY_ID &&
-      env.GCP_OIDC_PUBLIC_JWK &&
-      env.GCP_OIDC_SIGNING_KEY,
+      env.GCP_WIF_AUDIENCE,
+  );
+}
+
+function hasUsableGoogleIdToken(props: Partial<GoldstarAuthProps> | undefined): boolean {
+  return Boolean(
+    typeof props?.googleIdToken === "string" &&
+      props.googleIdToken.length > 100 &&
+      typeof props.googleIdTokenExpiresAt === "number" &&
+      Number.isFinite(props.googleIdTokenExpiresAt) &&
+      props.googleIdTokenExpiresAt > Math.floor(Date.now() / 1000) + 60,
   );
 }
 
@@ -77,131 +82,31 @@ function jsonResponse(value: unknown, cacheControl = "no-store"): Response {
   });
 }
 
-function bytesToBase64Url(value: Uint8Array): string {
-  let binary = "";
-  for (const byte of value) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function encodeJsonBase64Url(value: unknown): string {
-  return bytesToBase64Url(encoder.encode(JSON.stringify(value)));
-}
-
-function toArrayBuffer(value: Uint8Array): ArrayBuffer {
-  const buffer = new ArrayBuffer(value.byteLength);
-  new Uint8Array(buffer).set(value);
-  return buffer;
-}
-
-function getPublicJwk(env: Env): JsonWebKey & { kid: string; alg: string; use: string } {
-  const source = JSON.parse(env.GCP_OIDC_PUBLIC_JWK) as JsonWebKey & {
-    kid?: string;
-    alg?: string;
-    use?: string;
-  };
-  if (source.kty !== "RSA" || !source.n || !source.e || source.d) {
-    throw new Error("GCP OIDC public key configuration is invalid.");
-  }
-  return {
-    kty: "RSA",
-    n: source.n,
-    e: source.e,
-    use: "sig",
-    alg: "RS256",
-    kid: env.GCP_OIDC_KEY_ID,
-  };
-}
-
-function oidcUnavailable(message: string): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status: 503,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-      "Retry-After": "60",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
-}
-
-function oidcDiscovery(env: Env): Response {
-  if (!env.GCP_OIDC_ISSUER || !env.GCP_OIDC_KEY_ID || !env.GCP_OIDC_PUBLIC_JWK) {
-    return oidcUnavailable("OIDC issuer is not configured.");
-  }
-  return jsonResponse(
-    {
-      issuer: env.GCP_OIDC_ISSUER,
-      jwks_uri: env.GCP_OIDC_ISSUER + "/.well-known/jwks.json",
-      response_types_supported: ["id_token"],
-      subject_types_supported: ["public"],
-      id_token_signing_alg_values_supported: ["RS256"],
-      claims_supported: ["iss", "sub", "aud", "iat", "exp", "jti"],
-    },
-    "public, max-age=300",
-  );
-}
-
-function oidcJwks(env: Env): Response {
-  if (!env.GCP_OIDC_ISSUER || !env.GCP_OIDC_KEY_ID || !env.GCP_OIDC_PUBLIC_JWK) {
-    return oidcUnavailable("OIDC signing key is not configured.");
-  }
-  try {
-    return jsonResponse(
-      { keys: [getPublicJwk(env)] },
-      "public, max-age=300",
-    );
-  } catch {
-    return oidcUnavailable("OIDC public key configuration is invalid.");
-  }
-}
-
-async function createGcpSubjectToken(env: Env): Promise<string> {
-  if (
-    !env.GCP_OIDC_ISSUER ||
-    !env.GCP_OIDC_KEY_ID ||
-    !env.GCP_OIDC_SIGNING_KEY ||
-    !env.GCP_WIF_AUDIENCE
-  ) {
-    throw new Error("Google Cloud federation is not fully configured.");
-  }
-
-  const privateKey = env.GCP_OIDC_SIGNING_KEY;
-
-  const now = Math.floor(Date.now() / 1000);
-  const header = {
-    alg: "RS256",
-    typ: "JWT",
-    kid: env.GCP_OIDC_KEY_ID,
-  };
-  const claims = {
-    iss: env.GCP_OIDC_ISSUER,
-    sub: GCP_SUBJECT,
-    aud: env.GCP_WIF_AUDIENCE,
-    iat: now,
-    exp: now + 300,
-    jti: crypto.randomUUID(),
-  };
-  const signingInput = encodeJsonBase64Url(header) + "." + encodeJsonBase64Url(claims);
-  const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    privateKey,
-    toArrayBuffer(encoder.encode(signingInput)),
-  );
-  return signingInput + "." + bytesToBase64Url(new Uint8Array(signature));
-}
-
-async function getGoogleCloudAccessToken(env: Env): Promise<string> {
-  if (!env.GCP_WIF_AUDIENCE || !env.GCP_SERVICE_ACCOUNT_EMAIL) {
+async function getGoogleCloudAccessToken(
+  env: Env,
+  props: Partial<GoldstarAuthProps> | undefined,
+): Promise<string> {
+  if (!env.GOOGLE_CLIENT_ID || !env.GCP_WIF_AUDIENCE || !env.GCP_SERVICE_ACCOUNT_EMAIL) {
     throw new Error("Google Cloud workload identity settings are incomplete.");
   }
+  if (
+    !props ||
+    props.role !== "owner" ||
+    props.email?.trim().toLowerCase() !== "goldstar.al.manager@gmail.com" ||
+    !props.googleSub ||
+    !props.googleIdToken ||
+    !Number.isFinite(props.googleIdTokenExpiresAt) ||
+    (props.googleIdTokenExpiresAt ?? 0) <= Math.floor(Date.now() / 1000) + 60
+  ) {
+    throw new Error("The Google sign-in token is missing or expired. Sign in again and re-authorize Google Cloud access.");
+  }
 
-  const subjectToken = await createGcpSubjectToken(env);
   const exchangeBody = new URLSearchParams({
     grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
     audience: env.GCP_WIF_AUDIENCE,
     requested_token_type: "urn:ietf:params:oauth:token-type:access_token",
-    subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
-    subject_token: subjectToken,
+    subject_token_type: "urn:ietf:params:oauth:token-type:id_token",
+    subject_token: props.googleIdToken,
     scope: GOOGLE_CLOUD_SCOPE,
   });
 
@@ -211,11 +116,11 @@ async function getGoogleCloudAccessToken(env: Env): Promise<string> {
     body: exchangeBody,
   });
   if (!exchangeResponse.ok) {
-    throw new Error("Google Security Token Service rejected the federation (" + exchangeResponse.status + ").");
+    throw new Error("Google Security Token Service rejected the federated Google identity (" + exchangeResponse.status + ").");
   }
   const exchanged = (await exchangeResponse.json()) as GoogleStsResponse;
   if (!exchanged.access_token) {
-    throw new Error("Google Security Token Service returned no access token.");
+    throw new Error("Google Security Token Service returned no federated access token.");
   }
 
   const serviceAccount = encodeURIComponent(env.GCP_SERVICE_ACCOUNT_EMAIL);
@@ -297,6 +202,7 @@ function createServer() {
     props.email.trim().toLowerCase() === "goldstar.al.manager@gmail.com";
   const bindings = env as unknown as Env;
   const gcpConfigured = isGcpFederationConfigured(bindings);
+  const googleIdTokenUsable = hasUsableGoogleIdToken(props);
 
   server.registerTool(
     "goldstar_mcp_status",
@@ -316,7 +222,7 @@ function createServer() {
           typeof (identity as Record<string, unknown>).email === "string"
             ? (identity as Record<string, string>).email
             : null,
-        googleCloudToolsReady: gcpConfigured,
+        googleCloudToolsReady: gcpConfigured && googleIdTokenUsable,
       });
     },
   );
@@ -338,7 +244,7 @@ function createServer() {
     },
   );
 
-  if (isOwner && gcpConfigured && grantedScopes.has("gcp:read")) {
+  if (isOwner && gcpConfigured && googleIdTokenUsable && grantedScopes.has("gcp:read")) {
     server.registerTool(
       "gcp_project_info",
       {
@@ -347,7 +253,7 @@ function createServer() {
       },
       async () => {
         try {
-          const accessToken = await getGoogleCloudAccessToken(bindings);
+          const accessToken = await getGoogleCloudAccessToken(bindings, props);
           const project = await googleCloudRequest(
             "https://cloudresourcemanager.googleapis.com/v3/projects/" +
               encodeURIComponent(bindings.GCP_PROJECT_NUMBER),
@@ -379,7 +285,7 @@ function createServer() {
       },
       async ({ pageSize, pageToken }) => {
         try {
-          const accessToken = await getGoogleCloudAccessToken(bindings);
+          const accessToken = await getGoogleCloudAccessToken(bindings, props);
           const url = new URL(
             "https://serviceusage.googleapis.com/v1/projects/" +
               encodeURIComponent(bindings.GCP_PROJECT_NUMBER) +
@@ -409,7 +315,7 @@ function createServer() {
     );
   }
 
-  if (isOwner && gcpConfigured && grantedScopes.has("gcp:read")) {
+  if (isOwner && gcpConfigured && googleIdTokenUsable && grantedScopes.has("gcp:read")) {
     server.registerTool(
       "gcp_operation_status",
       {
@@ -423,7 +329,7 @@ function createServer() {
       },
       async ({ operationName }) => {
         try {
-          const accessToken = await getGoogleCloudAccessToken(bindings);
+          const accessToken = await getGoogleCloudAccessToken(bindings, props);
           const result = await googleCloudRequest(
             "https://serviceusage.googleapis.com/v1/" + operationName,
             accessToken,
@@ -444,7 +350,7 @@ function createServer() {
     );
   }
 
-  if (isOwner && gcpConfigured && grantedScopes.has("gcp:write")) {
+  if (isOwner && gcpConfigured && googleIdTokenUsable && grantedScopes.has("gcp:write")) {
     server.registerTool(
       "gcp_enable_api",
       {
@@ -472,7 +378,7 @@ function createServer() {
           );
         }
         try {
-          const accessToken = await getGoogleCloudAccessToken(bindings);
+          const accessToken = await getGoogleCloudAccessToken(bindings, props);
           const result = await googleCloudRequest(
             "https://serviceusage.googleapis.com/v1/projects/" +
               encodeURIComponent(bindings.GCP_PROJECT_NUMBER) +
@@ -540,12 +446,6 @@ export default {
         googleCloudFederationConfigured: isGcpFederationConfigured(environment),
         ownerRestricted: true,
       }));
-    }
-    if (request.method === "GET" && path === "/.well-known/openid-configuration") {
-      return Promise.resolve(oidcDiscovery(environment));
-    }
-    if (request.method === "GET" && path === "/.well-known/jwks.json") {
-      return Promise.resolve(oidcJwks(environment));
     }
     return resourceServer.fetch(request, environment, ctx);
   },
