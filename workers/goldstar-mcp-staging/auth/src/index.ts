@@ -193,8 +193,15 @@ async function verifyGoogleIdToken(
   }
 
   const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
-  if (!audiences.includes(env.GOOGLE_CLIENT_ID)) return null;
-  if (audiences.length > 1 && claims.azp !== env.GOOGLE_CLIENT_ID) return null;
+  if (
+    audiences.length === 0 ||
+    audiences.some((audience) => typeof audience !== "string" || !audience) ||
+    !audiences.includes(env.GOOGLE_CLIENT_ID) ||
+    (claims.azp !== undefined && claims.azp !== env.GOOGLE_CLIENT_ID) ||
+    (audiences.length > 1 && claims.azp !== env.GOOGLE_CLIENT_ID)
+  ) {
+    return null;
+  }
 
   const discoveryResponse = await fetch(GOOGLE_DISCOVERY_ENDPOINT, {
     headers: { Accept: "application/json" },
