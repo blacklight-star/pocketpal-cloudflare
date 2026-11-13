@@ -19,7 +19,7 @@
     "GCP_SERVICE_ACCOUNT_EMAIL": "goldstar-gcp-automation@personal-ai-manager-00.iam.gserviceaccount.com",
     "GCP_OIDC_ISSUER": "https://goldstar-mcp-resource-staging.goldstar-al-manager.workers.dev",
     "GCP_OIDC_KEY_ID": "goldstar-wif-rsa-2026-11",
-    "GCP_OIDC_PUBLIC_JWK": "",
+    "GCP_OIDC_PUBLIC_JWK": "{\"kty\":\"RSA\",\"n\":\"lu_OVvpmCh3k39mmkRQ_kRnHI2ETgce0UEwpu-2sinLNKLGWupq9tPhiRlg0Imyn57YB3oM2QWWhjmMPV3F7892oGeVaPE3I_Clm78q_tgLGX4V_vhh53FGRYYbLcq9a4fcReYLXM294Gse6aCCkWfJybBR_uezTUYtJZ-VtH-cDrhmW3BWpr7DWpj2SJI9SaP47raI6UCnyfgBiY4WjJJU6rmLq2VfvKhHDUoU8Myu4QJ4AznC8XK1g1RE0U-iUDNetFUMc-maqRCn83EKpduVHn71RdhjYHB0fgVtTa22QnkVixFjvSpWvE3-ub5Kuam4CukQyGdkGHjIeYCuwgw\",\"e\":\"AQAB\"}",
     "GCP_WIF_AUDIENCE": "//iam.googleapis.com/projects/936893789096/locations/global/workloadIdentityPools/goldstar-mcp-staging/providers/cloudflare-goldstar-mcp"
   },
   "observability": {
