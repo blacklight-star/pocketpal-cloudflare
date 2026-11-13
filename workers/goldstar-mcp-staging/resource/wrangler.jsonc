@@ -8,8 +8,7 @@
   "services": [
     {
       "binding": "AUTH_SERVER",
-      "service": "goldstar-mcp-auth-staging",
-      "entrypoint": "AuthServer"
+      "service": "goldstar-mcp-auth-staging"
     }
   ],
   "vars": {
