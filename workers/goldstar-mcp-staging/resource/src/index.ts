@@ -18,7 +18,7 @@ interface Env {
   GCP_OIDC_ISSUER: string;
   GCP_OIDC_KEY_ID: string;
   GCP_OIDC_PUBLIC_JWK: string;
-  GCP_OIDC_PRIVATE_KEY_PKCS8_B64: string;
+  GCP_OIDC_SIGNING_KEY: CryptoKey;
   GCP_WIF_AUDIENCE: string;
 }
 
@@ -55,13 +55,6 @@ function jsonResponse(value: unknown, cacheControl = "no-store"): Response {
       "X-Content-Type-Options": "nosniff",
     },
   });
-}
-
-function base64ToBytes(value: string): Uint8Array {
-  const standard = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = standard.padEnd(Math.ceil(standard.length / 4) * 4, "=");
-  const binary = atob(padded);
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
 function bytesToBase64Url(value: Uint8Array): string {
@@ -134,20 +127,13 @@ async function createGcpSubjectToken(env: Env): Promise<string> {
   if (
     !env.GCP_OIDC_ISSUER ||
     !env.GCP_OIDC_KEY_ID ||
-    !env.GCP_OIDC_PRIVATE_KEY_PKCS8_B64 ||
+    !env.GCP_OIDC_SIGNING_KEY ||
     !env.GCP_WIF_AUDIENCE
   ) {
     throw new Error("Google Cloud federation is not fully configured.");
   }
 
-  const privateKeyBytes = base64ToBytes(env.GCP_OIDC_PRIVATE_KEY_PKCS8_B64);
-  const privateKey = await crypto.subtle.importKey(
-    "pkcs8",
-    toArrayBuffer(privateKeyBytes),
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
+  const privateKey = env.GCP_OIDC_SIGNING_KEY;
 
   const now = Math.floor(Date.now() / 1000);
   const header = {
@@ -285,7 +271,7 @@ function createServer() {
       bindings.GCP_OIDC_ISSUER &&
       bindings.GCP_OIDC_KEY_ID &&
       bindings.GCP_OIDC_PUBLIC_JWK &&
-      bindings.GCP_OIDC_PRIVATE_KEY_PKCS8_B64,
+      bindings.GCP_OIDC_SIGNING_KEY,
   );
 
   server.registerTool(
