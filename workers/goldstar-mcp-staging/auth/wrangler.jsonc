@@ -3,7 +3,10 @@
   "name": "goldstar-mcp-auth-staging",
   "main": "src/index.ts",
   "compatibility_date": "2026-11-13",
-  "compatibility_flags": ["global_fetch_strictly_public", "nodejs_compat"],
+  "compatibility_flags": [
+    "global_fetch_strictly_public",
+    "nodejs_compat"
+  ],
   "workers_dev": true,
   "preview_urls": false,
   "kv_namespaces": [
@@ -15,7 +18,8 @@
   "vars": {
     "OAUTH_ISSUER": "https://goldstar-mcp-auth-staging.goldstar-al-manager.workers.dev",
     "MCP_RESOURCE": "https://goldstar-mcp-resource-staging.goldstar-al-manager.workers.dev/mcp",
-    "GOLDSTAR_OWNER_EMAIL": "goldstar.al.manager@gmail.com"
+    "GOLDSTAR_OWNER_EMAIL": "goldstar.al.manager@gmail.com",
+    "GOOGLE_CLIENT_ID": ""
   },
   "observability": {
     "enabled": true,
