@@ -21,6 +21,8 @@ interface GoogleIdentity {
   email: string;
   email_verified: boolean;
   name?: string;
+  idToken: string;
+  idTokenExpiresAt: number;
 }
 
 interface GoogleTokenResponse {
@@ -55,6 +57,9 @@ export interface GoldstarAuthProps {
   googleSub: string;
   role: "owner";
   grantedScopes: string[];
+  // Server-side only. Never return this bearer token through an MCP tool.
+  googleIdToken?: string;
+  googleIdTokenExpiresAt?: number;
 }
 
 const SCOPES_SUPPORTED = ["mcp:read", "gcp:read", "gcp:write", "offline_access"] as const;
@@ -267,6 +272,8 @@ async function verifyGoogleIdToken(
     email,
     email_verified: claims.email_verified,
     name: claims.name?.trim() || email,
+    idToken,
+    idTokenExpiresAt: claims.exp,
   };
 }
 
@@ -428,6 +435,14 @@ async function googleCallback(request: Request, env: Env): Promise<Response> {
       grantedScopes: originalRequest.scope.filter((scope) =>
         SCOPES_SUPPORTED.includes(scope as (typeof SCOPES_SUPPORTED)[number]),
       ),
+      // Retain the one-hour Google ID token only for sessions explicitly
+      // granted Google Cloud scopes; it is never returned to the MCP client.
+      ...(originalRequest.scope.some((scope) => scope === "gcp:read" || scope === "gcp:write")
+        ? {
+            googleIdToken: identity.idToken,
+            googleIdTokenExpiresAt: identity.idTokenExpiresAt,
+          }
+        : {}),
     } satisfies GoldstarAuthProps,
   });
 
