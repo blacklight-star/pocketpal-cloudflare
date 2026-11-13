@@ -12,8 +12,15 @@ jobs:
   runner-smoke:
     runs-on: ubuntu-latest
     steps:
-      - name: Confirm hosted runner starts
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Confirm hosted runner and official actions work
         run: |
+          node --version
           echo "Goldstar GitHub Actions runner started."
           echo "Branch: ${GITHUB_REF_NAME}"
           echo "Commit: ${GITHUB_SHA}"
