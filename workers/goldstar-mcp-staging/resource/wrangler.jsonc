@@ -13,7 +13,14 @@
   ],
   "vars": {
     "MCP_RESOURCE": "https://goldstar-mcp-resource-staging.goldstar-al-manager.workers.dev/mcp",
-    "OAUTH_ISSUER": "https://goldstar-mcp-auth-staging.goldstar-al-manager.workers.dev"
+    "OAUTH_ISSUER": "https://goldstar-mcp-auth-staging.goldstar-al-manager.workers.dev",
+    "GCP_PROJECT_ID": "personal-ai-manager-00",
+    "GCP_PROJECT_NUMBER": "936893789096",
+    "GCP_SERVICE_ACCOUNT_EMAIL": "goldstar-gcp-automation@personal-ai-manager-00.iam.gserviceaccount.com",
+    "GCP_OIDC_ISSUER": "https://goldstar-mcp-resource-staging.goldstar-al-manager.workers.dev",
+    "GCP_OIDC_KEY_ID": "goldstar-wif-rsa-2026-11",
+    "GCP_OIDC_PUBLIC_JWK": "",
+    "GCP_WIF_AUDIENCE": "//iam.googleapis.com/projects/936893789096/locations/global/workloadIdentityPools/goldstar-mcp-staging/providers/cloudflare-goldstar-mcp"
   },
   "observability": {
     "enabled": true,
