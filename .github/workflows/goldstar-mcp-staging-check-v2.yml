@@ -1,16 +1,19 @@
-name: Goldstar MCP Staging CI (retrigger)
+name: Goldstar MCP Staging CI
 
 on:
   push:
     branches:
       - staging/goldstar-mcp-oauth
+    paths:
+      - workers/goldstar-mcp-staging/**
+      - .github/workflows/goldstar-mcp-staging-check-v2.yml
 
 permissions:
   contents: read
 
 jobs:
-  auth-check:
-    name: Auth Worker type-check and dry-run
+  staging-checks:
+    name: Validate Auth and Resource Workers
     runs-on: ubuntu-latest
     steps:
       - name: Checkout staging source
@@ -19,7 +22,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install Auth dependencies
+
+      - name: Install Auth Worker dependencies
         working-directory: workers/goldstar-mcp-staging/auth
         run: npm install --no-audit --no-fund
       - name: Type-check Auth Worker
@@ -29,17 +33,7 @@ jobs:
         working-directory: workers/goldstar-mcp-staging/auth
         run: npx wrangler deploy --dry-run --outdir=.wrangler-dry-run
 
-  resource-check:
-    name: Resource Worker type-check and dry-run
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout staging source
-        uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Install Resource dependencies
+      - name: Install Resource Worker dependencies
         working-directory: workers/goldstar-mcp-staging/resource
         run: npm install --no-audit --no-fund
       - name: Type-check Resource Worker
