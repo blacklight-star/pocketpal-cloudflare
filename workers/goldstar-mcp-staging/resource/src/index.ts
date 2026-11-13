@@ -46,6 +46,13 @@ const RESOURCE = "https://goldstar-mcp-resource-staging.goldstar-al-manager.work
 const ISSUER = "https://goldstar-mcp-auth-staging.goldstar-al-manager.workers.dev";
 const GOOGLE_CLOUD_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
 const GCP_SUBJECT = "goldstar-mcp-resource-staging";
+const GCP_ENABLE_API_ALLOWLIST = new Set([
+  "cloudresourcemanager.googleapis.com",
+  "iam.googleapis.com",
+  "iamcredentials.googleapis.com",
+  "serviceusage.googleapis.com",
+  "sts.googleapis.com",
+]);
 const encoder = new TextEncoder();
 
 function jsonResponse(value: unknown, cacheControl = "no-store"): Response {
@@ -449,6 +456,11 @@ function createServer() {
       async ({ serviceId, confirmation }) => {
         const expected =
           "ENABLE " + serviceId + " IN " + bindings.GCP_PROJECT_ID;
+        if (!GCP_ENABLE_API_ALLOWLIST.has(serviceId)) {
+          return toolError(
+            new Error("This API is not in the staged allowlist. It requires a deliberate code review and update before it can be enabled."),
+          );
+        }
         if (confirmation !== expected) {
           return toolError(
             new Error("Explicit confirmation required. The owner must confirm exactly: " + expected),
