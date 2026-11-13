@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  runner-smoke:
+  auth-job-smoke:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -18,9 +18,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Confirm hosted runner and official actions work
-        run: |
-          node --version
-          echo "Goldstar GitHub Actions runner started."
-          echo "Branch: ${GITHUB_REF_NAME}"
-          echo "Commit: ${GITHUB_SHA}"
+      - name: Check Auth project path
+        working-directory: workers/goldstar-mcp-staging/auth
+        run: pwd
+
+  resource-job-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check Resource project path
+        working-directory: workers/goldstar-mcp-staging/resource
+        run: pwd
