@@ -1,0 +1,42 @@
+name: Goldstar MCP Staging Checks
+
+on:
+  push:
+    branches:
+      - staging/goldstar-mcp-oauth
+    paths:
+      - workers/goldstar-mcp-staging/**
+      - .github/workflows/goldstar-mcp-staging-check.yml
+  pull_request:
+    paths:
+      - workers/goldstar-mcp-staging/**
+      - .github/workflows/goldstar-mcp-staging-check.yml
+
+permissions:
+  contents: read
+
+jobs:
+  type-check-and-dry-run:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - workers/goldstar-mcp-staging/auth
+          - workers/goldstar-mcp-staging/resource
+    defaults:
+      run:
+        working-directory: ${{ matrix.project }}
+    steps:
+      - name: Checkout staging source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Type-check Worker
+        run: npm run type-check
+      - name: Build without deployment
+        run: npx wrangler deploy --dry-run --outdir=.wrangler-dry-run
