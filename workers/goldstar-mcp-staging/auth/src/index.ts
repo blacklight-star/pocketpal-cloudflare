@@ -309,6 +309,9 @@ async function postAuthorize(request: Request, env: Env): Promise<Response> {
     if (!grantedScopes.includes("mcp:read")) {
       return localError("The required mcp:read permission was not approved.", 403);
     }
+    if (grantedScopes.includes("gcp:write") && !grantedScopes.includes("gcp:read")) {
+      return localError("Google Cloud write access requires read access to the same project.", 403);
+    }
     const approved = await oauth.approveConsent(request, handle, {
       scope: grantedScopes,
     });
