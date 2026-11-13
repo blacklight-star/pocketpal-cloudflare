@@ -80,7 +80,7 @@ function toArrayBuffer(value: Uint8Array): ArrayBuffer {
   return buffer;
 }
 
-function getPublicJwk(env: Env): JsonWebKey {
+function getPublicJwk(env: Env): JsonWebKey & { kid: string; alg: string; use: string } {
   const source = JSON.parse(env.GCP_OIDC_PUBLIC_JWK) as JsonWebKey & {
     kid?: string;
     alg?: string;
