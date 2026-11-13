@@ -54,9 +54,10 @@ export interface GoldstarAuthProps {
   name: string;
   googleSub: string;
   role: "owner";
+  grantedScopes: string[];
 }
 
-const SCOPES_SUPPORTED = ["mcp:read", "offline_access"] as const;
+const SCOPES_SUPPORTED = ["mcp:read", "gcp:read", "gcp:write", "offline_access"] as const;
 const GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const GOOGLE_DISCOVERY_ENDPOINT = "https://accounts.google.com/.well-known/openid-configuration";
@@ -134,7 +135,7 @@ ${loopbackWarning}
 <input type="hidden" name="handle" value="${htmlEscape(handle)}">
 ${scopes}
 <p>
-<button type="submit" name="decision" value="approve">Allow selected read-only access</button>
+<button type="submit" name="decision" value="approve">Allow selected access</button>
 <button type="submit" name="decision" value="deny">Deny</button>
 </p>
 </form>
@@ -187,7 +188,8 @@ async function verifyGoogleIdToken(
     !Number.isFinite(claims.exp) ||
     claims.exp <= now ||
     !Number.isFinite(claims.iat) ||
-    claims.iat > now + 60
+    claims.iat > now + 60 ||
+    now - claims.iat > 3600
   ) {
     return null;
   }
@@ -295,10 +297,16 @@ async function postAuthorize(request: Request, env: Env): Promise<Response> {
     const requestedScopes = form
       .getAll("scope")
       .filter((scope): scope is string => typeof scope === "string");
-    const approved = await oauth.approveConsent(request, handle, {
-      scope: requestedScopes.filter((scope) =>
+    const grantedScopes = [...new Set(
+      requestedScopes.filter((scope) =>
         SCOPES_SUPPORTED.includes(scope as (typeof SCOPES_SUPPORTED)[number]),
       ),
+    )];
+    if (!grantedScopes.includes("mcp:read")) {
+      return localError("The required mcp:read permission was not approved.", 403);
+    }
+    const approved = await oauth.approveConsent(request, handle, {
+      scope: grantedScopes,
     });
 
     const verifier = `${crypto.randomUUID()}${crypto.randomUUID()}`;
@@ -410,6 +418,9 @@ async function googleCallback(request: Request, env: Env): Promise<Response> {
       name: identity.name ?? identity.email,
       googleSub: identity.sub,
       role: "owner",
+      grantedScopes: originalRequest.scope.filter((scope) =>
+        SCOPES_SUPPORTED.includes(scope as (typeof SCOPES_SUPPORTED)[number]),
+      ),
     } satisfies GoldstarAuthProps,
   });
 
