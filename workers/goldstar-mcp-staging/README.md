@@ -22,4 +22,4 @@ No production Worker is referenced by either deployment configuration. No MCP wr
 
 ## Cloudflare Workers Builds
 
-Each subdirectory is an independent Workers Builds project. Set its root directory to the corresponding `workers/goldstar-mcp-staging/auth` or `workers/goldstar-mcp-staging/resource` path. Use `npm ci` (or the platform's automatic dependency install) and `npx wrangler deploy`. Keep the production branch unchanged; deploy from the dedicated `staging/goldstar-mcp-oauth` branch.
+Each subdirectory is an independent Workers Builds project. Set its root directory to the corresponding `workers/goldstar-mcp-staging/auth` or `workers/goldstar-mcp-staging/resource` path. Use `npm install` (or the platform's automatic dependency install) and `npx wrangler deploy`. Keep the production branch unchanged; deploy from the dedicated `staging/goldstar-mcp-oauth` branch.
