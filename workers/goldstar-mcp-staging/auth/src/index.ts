@@ -232,13 +232,17 @@ async function verifyGoogleIdToken(
     false,
     ["verify"],
   );
-  const signature = base64UrlToBytes(parts[2]);
-  const signedContent = encoder.encode(`${parts[0]}.${parts[1]}`);
+  const signatureBytes = base64UrlToBytes(parts[2]);
+  const signatureBuffer = new ArrayBuffer(signatureBytes.byteLength);
+  new Uint8Array(signatureBuffer).set(signatureBytes);
+  const signedContentBytes = encoder.encode(`${parts[0]}.${parts[1]}`);
+  const signedContentBuffer = new ArrayBuffer(signedContentBytes.byteLength);
+  new Uint8Array(signedContentBuffer).set(signedContentBytes);
   const validSignature = await crypto.subtle.verify(
     "RSASSA-PKCS1-v1_5",
     publicKey,
-    signature,
-    signedContent,
+    signatureBuffer,
+    signedContentBuffer,
   );
   if (!validSignature) return null;
 
