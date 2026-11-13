@@ -16,17 +16,12 @@ permissions:
   contents: read
 
 jobs:
-  type-check-and-dry-run:
+  auth-check:
+    name: Auth Worker type-check and dry-run
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        project:
-          - workers/goldstar-mcp-staging/auth
-          - workers/goldstar-mcp-staging/resource
     defaults:
       run:
-        working-directory: ${{ matrix.project }}
+        working-directory: workers/goldstar-mcp-staging/auth
     steps:
       - name: Checkout staging source
         uses: actions/checkout@v4
@@ -36,7 +31,27 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Type-check Worker
+      - name: Type-check Auth Worker
         run: npm run type-check
-      - name: Build without deployment
+      - name: Dry-run Auth Worker build
+        run: npx wrangler deploy --dry-run --outdir=.wrangler-dry-run
+
+  resource-check:
+    name: Resource Worker type-check and dry-run
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workers/goldstar-mcp-staging/resource
+    steps:
+      - name: Checkout staging source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Type-check Resource Worker
+        run: npm run type-check
+      - name: Dry-run Resource Worker build
         run: npx wrangler deploy --dry-run --outdir=.wrangler-dry-run
