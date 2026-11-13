@@ -9,28 +9,14 @@ permissions:
   contents: read
 
 jobs:
-  auth-job-smoke:
+  first-job:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Check Auth project path
-        working-directory: workers/goldstar-mcp-staging/auth
-        run: pwd
+      - name: Confirm first job
+        run: echo "first job started"
 
-  resource-job-smoke:
+  second-job:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Check Resource project path
-        working-directory: workers/goldstar-mcp-staging/resource
-        run: pwd
+      - name: Confirm second job
+        run: echo "second job started"
