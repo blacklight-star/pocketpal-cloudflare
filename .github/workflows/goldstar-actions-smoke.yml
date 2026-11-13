@@ -1,0 +1,21 @@
+name: Goldstar Actions Runner Smoke Test
+
+on:
+  push:
+    branches:
+      - staging/goldstar-mcp-oauth
+    paths:
+      - .github/workflows/goldstar-actions-smoke.yml
+
+permissions:
+  contents: read
+
+jobs:
+  runner-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm hosted runner starts
+        run: |
+          echo "Goldstar GitHub Actions runner started."
+          echo "Branch: ${GITHUB_REF_NAME}"
+          echo "Commit: ${GITHUB_SHA}"
