@@ -117,6 +117,9 @@ function consentHtml(details: ConsentDescription, handle: string): string {
         `<label><input type="checkbox" name="scope" value="${htmlEscape(scope)}" checked> ${htmlEscape(scope)}</label>`,
     )
     .join("<br>");
+  const googleCloudWriteWarning = details.scope.includes("gcp:write")
+    ? "<p><strong>Google Cloud write access:</strong> this permission can change resources in the configured project. Only approve it when you intend to allow those changes. Sensitive operations still require a separate explicit confirmation.</p>"
+    : "";
   const loopbackWarning = details.redirectIsLoopback
     ? "<p><strong>Warning:</strong> access will be returned to an application on this device. Continue only if you started this sign-in.</p>"
     : "";
@@ -131,6 +134,7 @@ function consentHtml(details: ConsentDescription, handle: string): string {
 <p>Authorization response will be sent to: <strong>${htmlEscape(details.redirectHost)}</strong></p>
 ${loopbackWarning}
 <p>Requested access:</p>
+${googleCloudWriteWarning}
 <form method="post" action="/authorize">
 <input type="hidden" name="handle" value="${htmlEscape(handle)}">
 ${scopes}
