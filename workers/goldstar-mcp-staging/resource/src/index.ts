@@ -55,6 +55,19 @@ const GCP_ENABLE_API_ALLOWLIST = new Set([
 ]);
 const encoder = new TextEncoder();
 
+function isGcpFederationConfigured(env: Env): boolean {
+  return Boolean(
+    env.GCP_PROJECT_ID &&
+      env.GCP_PROJECT_NUMBER &&
+      env.GCP_SERVICE_ACCOUNT_EMAIL &&
+      env.GCP_WIF_AUDIENCE &&
+      env.GCP_OIDC_ISSUER &&
+      env.GCP_OIDC_KEY_ID &&
+      env.GCP_OIDC_PUBLIC_JWK &&
+      env.GCP_OIDC_SIGNING_KEY,
+  );
+}
+
 function jsonResponse(value: unknown, cacheControl = "no-store"): Response {
   return Response.json(value, {
     headers: {
@@ -283,15 +296,7 @@ function createServer() {
     typeof props.email === "string" &&
     props.email.trim().toLowerCase() === "goldstar.al.manager@gmail.com";
   const bindings = env as unknown as Env;
-  const gcpConfigured = Boolean(
-    bindings.GCP_PROJECT_ID &&
-      bindings.GCP_SERVICE_ACCOUNT_EMAIL &&
-      bindings.GCP_WIF_AUDIENCE &&
-      bindings.GCP_OIDC_ISSUER &&
-      bindings.GCP_OIDC_KEY_ID &&
-      bindings.GCP_OIDC_PUBLIC_JWK &&
-      bindings.GCP_OIDC_SIGNING_KEY,
-  );
+  const gcpConfigured = isGcpFederationConfigured(bindings);
 
   server.registerTool(
     "goldstar_mcp_status",
@@ -526,6 +531,16 @@ const resourceServer = new OAuthResourceServer<Env, GoldstarAuthProps>({
 export default {
   fetch(request: Request, environment: Env, ctx: ExecutionContext): Promise<Response> {
     const path = new URL(request.url).pathname;
+    if (request.method === "GET" && path === "/health") {
+      return Promise.resolve(jsonResponse({
+        service: "goldstar-mcp-resource-staging",
+        status: "ok",
+        mode: "staging",
+        projectId: environment.GCP_PROJECT_ID,
+        googleCloudFederationConfigured: isGcpFederationConfigured(environment),
+        ownerRestricted: true,
+      }));
+    }
     if (request.method === "GET" && path === "/.well-known/openid-configuration") {
       return Promise.resolve(oidcDiscovery(environment));
     }
