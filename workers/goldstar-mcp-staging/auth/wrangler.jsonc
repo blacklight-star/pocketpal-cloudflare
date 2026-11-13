@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "goldstar-mcp-auth-staging",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-13",
+  "compatibility_flags": ["global_fetch_strictly_public", "nodejs_compat"],
+  "workers_dev": true,
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_KV",
+      "id": "3c9965b658e24ae7b498c633eedea551"
+    }
+  ],
+  "vars": {
+    "OAUTH_ISSUER": "https://goldstar-mcp-auth-staging.goldstar-al-manager.workers.dev",
+    "MCP_RESOURCE": "https://goldstar-mcp-resource-staging.goldstar-al-manager.workers.dev/mcp",
+    "GOLDSTAR_OWNER_EMAIL": "goldstar.al.manager@gmail.com"
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  }
+}
