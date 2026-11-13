@@ -9,14 +9,18 @@ permissions:
   contents: read
 
 jobs:
-  first-job:
+  single-runner-smoke:
     runs-on: ubuntu-latest
     steps:
-      - name: Confirm first job
-        run: echo "first job started"
-
-  second-job:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Confirm second job
-        run: echo "second job started"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check Auth working directory
+        working-directory: workers/goldstar-mcp-staging/auth
+        run: pwd
+      - name: Check Resource working directory
+        working-directory: workers/goldstar-mcp-staging/resource
+        run: pwd
